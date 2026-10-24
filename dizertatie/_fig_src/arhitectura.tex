@@ -1,0 +1,31 @@
+\documentclass[border=8pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Latin Modern Roman}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, fit, backgrounds}
+\begin{document}
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw, rounded corners, align=center, minimum height=0.95cm, minimum width=2.05cm, fill=gray!8},
+  >=Stealth, node distance=0.95cm
+]
+% --- planul de date (calea cererii) ---
+\node[box] (user) {Utilizator};
+\node[box, right=of user] (cf) {Cloudflare\\Global LB\\(proximity)};
+\node[box, right=of cf] (gw) {Gateway\\Spring Cloud\\Gateway (ASG)};
+\node[box, right=of gw] (alb) {ALB\\regional};
+\node[box, right=of alb] (app) {Instanțe\\aplicație\\(ASG)};
+\draw[->] (user) -- (cf);
+\draw[->] (cf) -- (gw);
+\draw[->] (gw) -- (alb);
+\draw[->] (alb) -- (app);
+\node[above=0.15cm of cf, font=\scriptsize\itshape] {plan de date (calea cererii)};
+% --- planul de control ---
+\node[box, below=1.7cm of gw] (console) {Consolă\\Flask + boto3};
+\node[box, below=1.7cm of alb] (store) {S3 (sursă de\\adevăr) +\\DynamoDB};
+\draw[->] (console) -- node[above, font=\scriptsize] {scrie} (store);
+\draw[->, dashed] (store) -- node[right, font=\scriptsize] {config (30s)} (gw);
+\draw[->, dashed] (console.north) to[bend left=12] node[left, font=\scriptsize, pos=0.6] {provizionează} (gw.south west);
+\node[below=0.15cm of console, font=\scriptsize\itshape, xshift=1cm] {plan de control};
+\end{tikzpicture}
+\end{document}

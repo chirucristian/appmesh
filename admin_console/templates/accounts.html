@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic %}
+{% block title %}Accounts — AppMesh Console{% endblock %}
+
+{% block content %}
+<div class="phead">
+    <div>
+        <h1>Accounts</h1>
+        <p class="sub">{{ users | length }} user{{ 's' if users | length != 1 else '' }} · root accounts manage regions, accounts and all deployments</p>
+    </div>
+</div>
+
+<div class="cols" style="grid-template-columns:1.6fr 1fr">
+    <div class="tcard">
+        <table class="dt">
+            <thead>
+                <tr><th>Username</th><th>Role</th><th>Deployments</th><th>Created</th><th class="r"></th></tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+                <tr>
+                    <td>
+                        <span class="svc">
+                            <span class="uavatar">{{ u.username[:2] | upper }}</span>
+                            {{ u.username }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if u.role == 'root' %}
+                        <span class="badge badge-accent">root</span>
+                        {% else %}
+                        <span class="badge badge-neutral">user</span>
+                        {% endif %}
+                    </td>
+                    <td class="muted">{{ u.deployments or '—' }}</td>
+                    <td class="muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+                    <td class="r">
+                        {% if u.role != 'root' %}
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('{{ u.username }}')">Delete</button>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel" style="margin-bottom:0">
+        <div class="panel-head"><span class="panel-title">{{ ic('plus') }}Create account</span></div>
+        <div class="panel-body">
+            <form onsubmit="createUser(event)">
+                <div class="field">
+                    <label>Username</label>
+                    <input id="new-username" class="input mono" placeholder="username" required>
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input id="new-password" type="password" class="input" placeholder="••••••••" required>
+                </div>
+                <div class="field">
+                    <label>Role</label>
+                    <div class="seg" id="role-seg">
+                        <button type="button" class="on" data-role="user">user</button>
+                        <button type="button" data-role="root">root</button>
+                    </div>
+                    <input type="hidden" id="new-role" value="user">
+                    <span class="hint">Users only see and manage their own deployments.</span>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Create account</button>
+            </form>
+            <p id="acct-msg" style="margin-top:10px;font-size:12px;font-family:var(--mono)"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Segmented role control → hidden #new-role input (read by createUser).
+document.querySelectorAll('#role-seg button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#role-seg button').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+        document.getElementById('new-role').value = btn.dataset.role;
+    });
+});
+
+async function createUser(e){
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append('username', document.getElementById('new-username').value.trim());
+    fd.append('password', document.getElementById('new-password').value);
+    fd.append('role', document.getElementById('new-role').value);
+    const r = await fetch('/api/accounts', {method:'POST', body: fd});
+    const j = await r.json().catch(() => ({}));
+    const msg = document.getElementById('acct-msg');
+    if (r.ok) {
+        msg.style.color = 'var(--green)';
+        msg.textContent = 'Created ' + fd.get('username');
+        setTimeout(() => location.reload(), 600);
+    } else {
+        msg.style.color = 'var(--red)';
+        msg.textContent = j.error || 'Error creating account';
+    }
+}
+async function deleteUser(username){
+    if (!confirm('Delete account ' + username + '?')) return;
+    const r = await fetch('/api/accounts/' + encodeURIComponent(username) + '/delete', {method:'POST'});
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { location.reload(); }
+    else { alert(j.error || 'Error deleting account'); }
+}
+</script>
+{% endblock %}

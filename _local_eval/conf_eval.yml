@@ -1,0 +1,21 @@
+gateway:
+  services:
+    ambulance-service:
+      paths:
+        - /ambulance-service/**
+      health-check-path: /status
+      regions:
+        - name: local-a
+          url: http://localhost:8082
+        - name: local-b
+          url: http://localhost:8086
+  circuit-breaker:
+    failure-threshold: 3
+    success-threshold: 2
+    half-open-delay-seconds: 30
+  health-check:
+    interval-seconds: 15
+    timeout-seconds: 5
+  timeout:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 5000

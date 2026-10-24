@@ -1,0 +1,524 @@
+{
+  "start_state": {
+    "primary": "local-a",
+    "cb": {
+      "local-a": {
+        "cb": "CLOSED",
+        "healthy": true
+      },
+      "local-b": {
+        "cb": "CLOSED",
+        "healthy": true
+      }
+    }
+  },
+  "overhead": {
+    "direct": {
+      "summary": {
+        "n": 200,
+        "mean_ms": 13.94,
+        "median_ms": 15.14,
+        "p95_ms": 27.38,
+        "p99_ms": 28.09,
+        "min_ms": 2.39,
+        "max_ms": 28.38
+      },
+      "codes": {
+        "200": 200
+      }
+    },
+    "gateway": {
+      "summary": {
+        "n": 200,
+        "mean_ms": 15.53,
+        "median_ms": 15.29,
+        "p95_ms": 30.06,
+        "p99_ms": 30.74,
+        "min_ms": 4.23,
+        "max_ms": 31.78
+      },
+      "codes": {
+        "200": 200
+      }
+    },
+    "overhead_mean_ms": 1.59,
+    "overhead_median_ms": 0.15
+  },
+  "failover": {
+    "requests": 146,
+    "failed_requests": 0,
+    "first_secondary_t": 0.017,
+    "events_head": [
+      {
+        "t": 0.017,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 241.9
+      },
+      {
+        "t": 0.524,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 42.5
+      },
+      {
+        "t": 0.817,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 39.9
+      },
+      {
+        "t": 1.108,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 29.9
+      },
+      {
+        "t": 1.389,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 5.7
+      },
+      {
+        "t": 1.645,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 20.1
+      },
+      {
+        "t": 1.916,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 26.6
+      },
+      {
+        "t": 2.193,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 28.8
+      },
+      {
+        "t": 2.472,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 26.0
+      },
+      {
+        "t": 2.748,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 27.1
+      },
+      {
+        "t": 3.025,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 28.6
+      },
+      {
+        "t": 3.304,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 27.3
+      },
+      {
+        "t": 3.582,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 5.6
+      },
+      {
+        "t": 3.838,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 6.4
+      },
+      {
+        "t": 4.095,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 27.4
+      },
+      {
+        "t": 4.373,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 29.4
+      },
+      {
+        "t": 4.653,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 28.5
+      },
+      {
+        "t": 4.932,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 29.7
+      },
+      {
+        "t": 5.212,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 26.8
+      },
+      {
+        "t": 5.489,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 27.1
+      },
+      {
+        "t": 5.78,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 15.1
+      },
+      {
+        "t": 6.046,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 27.2
+      },
+      {
+        "t": 6.324,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 28.1
+      },
+      {
+        "t": 6.603,
+        "code": 200,
+        "backend": "local-b",
+        "lat_ms": 26.2
+      }
+    ],
+    "cb_snapshots": [
+      {
+        "t": 0.017,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 5.489,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 10.636,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 15.807,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 21.031,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 26.122,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 31.368,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 36.521,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      }
+    ]
+  },
+  "recovery": {
+    "backend_healthy_after_s": 4.2,
+    "traffic_back_to_primary_t": 22.05,
+    "cb_snapshots": [
+      {
+        "t": 4.216,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 9.462,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 14.702,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 19.97,
+        "cb": {
+          "local-a": {
+            "cb": "OPEN",
+            "healthy": false
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 25.366,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 30.591,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 35.815,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 41.007,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 46.239,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 51.487,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 56.753,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 61.977,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 67.2,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 72.467,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 77.733,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      },
+      {
+        "t": 82.97,
+        "cb": {
+          "local-a": {
+            "cb": "CLOSED",
+            "healthy": true
+          },
+          "local-b": {
+            "cb": "CLOSED",
+            "healthy": true
+          }
+        }
+      }
+    ]
+  },
+  "config_propagation": {
+    "poll_interval_ms": 10000,
+    "regions_before": 2,
+    "regions_after": 1,
+    "propagation_s": null
+  }
+}

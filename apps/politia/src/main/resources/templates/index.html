@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Service</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Top bar with version -->
+<header class="top-bar">
+    <div class="version-badge">v<span th:text="${version}">1.0.0</span> | <span th:text="${instanceId}">N/A</span> | <span th:text="${region}">N/A</span></div>
+    <h1 class="site-title">🚔 Police Service</h1>
+    <p class="site-subtitle">Protecting &amp; Serving the Community</p>
+</header>
+
+<!-- Hero section -->
+<section class="hero">
+    <div class="hero-content">
+        <h2>Need Police Assistance?</h2>
+        <p>Our officers are available <strong>24/7</strong> to ensure public safety and respond to emergencies.</p>
+        <a href="tel:112" class="btn-emergency">📞 Call 112 Now</a>
+    </div>
+</section>
+
+<!-- Services section -->
+<section class="services">
+    <h2 class="section-title">Our Services</h2>
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-icon">🚨</div>
+            <h3>Emergency Response</h3>
+            <p>Rapid dispatch of patrol units to crime scenes, accidents, and emergency situations.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">🔍</div>
+            <h3>Criminal Investigations</h3>
+            <p>Dedicated detective teams investigating crimes and bringing offenders to justice.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">🛡️</div>
+            <h3>Community Patrol</h3>
+            <p>Regular neighborhood patrols to deter crime and maintain public order.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">📋</div>
+            <h3>Reports &amp; Complaints</h3>
+            <p>File police reports, lodge complaints, and request official documentation.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Stats section -->
+<section class="stats">
+    <div class="stat">
+        <span class="stat-number">3,500+</span>
+        <span class="stat-label">Calls Answered Monthly</span>
+    </div>
+    <div class="stat">
+        <span class="stat-number">&lt; 6 min</span>
+        <span class="stat-label">Average Response Time</span>
+    </div>
+    <div class="stat">
+        <span class="stat-number">120+</span>
+        <span class="stat-label">Patrol Vehicles</span>
+    </div>
+    <div class="stat">
+        <span class="stat-number">500+</span>
+        <span class="stat-label">Officers on Duty</span>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <p>&copy; 2026 Police Service. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<svg viewBox="0 0 860 140" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrF" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3.5 L0,7 Z" fill="#444444"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="860" height="140" fill="#ffffff"/>
+
+  <!-- arrows between boxes -->
+  <path d="M205,75 H222" fill="none" stroke="#444444" stroke-width="1.5" marker-end="url(#arrF)"/>
+  <path d="M420,75 H437" fill="none" stroke="#444444" stroke-width="1.5" marker-end="url(#arrF)"/>
+  <path d="M635,75 H652" fill="none" stroke="#444444" stroke-width="1.5" marker-end="url(#arrF)"/>
+
+  <!-- Faza 1 -->
+  <rect x="20" y="45" width="185" height="62" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="112" y="70" text-anchor="middle" font-size="14" font-weight="600" fill="#000000">Faza 1</text>
+  <text x="112" y="90" text-anchor="middle" font-size="11" fill="#333333">Funcțional + cazuri-limită</text>
+
+  <!-- Faza 2 -->
+  <rect x="235" y="45" width="185" height="62" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="327" y="70" text-anchor="middle" font-size="14" font-weight="600" fill="#000000">Faza 2</text>
+  <text x="327" y="90" text-anchor="middle" font-size="11" fill="#333333">Ciclu de viață (o regiune)</text>
+
+  <!-- Faza 3 -->
+  <rect x="450" y="45" width="185" height="62" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="542" y="70" text-anchor="middle" font-size="14" font-weight="600" fill="#000000">Faza 3</text>
+  <text x="542" y="90" text-anchor="middle" font-size="11" fill="#333333">Persistență + reziliență</text>
+
+  <!-- Faza 4 -->
+  <rect x="665" y="45" width="185" height="62" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="757" y="70" text-anchor="middle" font-size="14" font-weight="600" fill="#000000">Faza 4</text>
+  <text x="757" y="90" text-anchor="middle" font-size="11" fill="#333333">Multi-region + failover</text>
+</svg>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambulance Service</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Top bar with version -->
+<header class="top-bar">
+    <div class="version-badge">v<span th:text="${version}">1.0.0</span> | <span th:text="${instanceId}">N/A</span> | <span th:text="${region}">N/A</span></div>
+    <h1 class="site-title">🚑 Ambulance Service</h1>
+    <p class="site-subtitle">Fast &amp; Reliable Emergency Medical Services</p>
+</header>
+
+<!-- Hero section -->
+<section class="hero">
+    <div class="hero-content">
+        <h2>Need Emergency Help?</h2>
+        <p>Our team of highly trained paramedics is available <strong>24/7</strong> to respond to your emergencies.</p>
+        <a href="tel:112" class="btn-emergency">📞 Call 112 Now</a>
+    </div>
+</section>
+
+<!-- Services section -->
+<section class="services">
+    <h2 class="section-title">Our Services</h2>
+    <div class="card-grid">
+        <div class="card">
+            <div class="card-icon">🚨</div>
+            <h3>Emergency Response</h3>
+            <p>Rapid dispatch of ambulances to accident sites and medical emergencies across the city.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">🏥</div>
+            <h3>Patient Transport</h3>
+            <p>Safe and comfortable inter-hospital transfers for patients requiring specialist care.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">🩺</div>
+            <h3>On-Site Medical Care</h3>
+            <p>Qualified paramedics provide life-saving treatment on-scene before hospital arrival.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">🛡️</div>
+            <h3>Event Medical Cover</h3>
+            <p>Professional medical standby services for sports events, concerts, and public gatherings.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Stats section -->
+<section class="stats">
+    <div class="stat">
+        <span class="stat-number">1,200+</span>
+        <span class="stat-label">Calls Answered Monthly</span>
+    </div>
+    <div class="stat">
+        <span class="stat-number">&lt; 8 min</span>
+        <span class="stat-label">Average Response Time</span>
+    </div>
+    <div class="stat">
+        <span class="stat-number">50+</span>
+        <span class="stat-label">Ambulances in Fleet</span>
+    </div>
+    <div class="stat">
+        <span class="stat-number">200+</span>
+        <span class="stat-label">Trained Paramedics</span>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <p>&copy; 2026 Ambulance Service. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

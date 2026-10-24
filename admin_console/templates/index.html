@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic, status_badge %}
+{% block title %}Deployments — AppMesh Console{% endblock %}
+
+{% block content %}
+{% set active_count = regions | selectattr('active') | list | length %}
+<div class="phead">
+    <div>
+        <h1>Services</h1>
+        <p class="sub">{{ deployments | length }} service{{ 's' if deployments | length != 1 else '' }} across {{ active_count }} region{{ 's' if active_count != 1 else '' }}</p>
+    </div>
+    <div class="phead-actions">
+        <a href="/scan" class="btn" title="Discover existing AWS resources">{{ ic('radar') }}Scan AWS</a>
+        <a href="/new" class="btn btn-primary">{{ ic('plus') }}Add service</a>
+    </div>
+</div>
+
+<div class="rstrip">
+    {% for r in regions %}
+    <div class="rchip"{% if is_root %} onclick="window.location='/regions'"{% endif %}>
+        <span class="rdot{{ '' if r.active else ' off' }}"></span>
+        <span class="rname">{{ r.id }}</span>
+        <span class="rmeta">{% if r.active %}gateway ok · {{ r.services }} svc{% else %}not onboarded{% endif %}</span>
+    </div>
+    {% endfor %}
+</div>
+
+{% if deployments %}
+<div class="tcard">
+    <table class="dt">
+        <thead>
+            <tr>
+                <th>Service</th>
+                {% if is_root %}<th>Owner</th>{% endif %}
+                <th>Region</th>
+                <th>Status</th>
+                <th>Hostname</th>
+                <th>Instances</th>
+                <th>Created</th>
+                <th class="r"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for id, dep in deployments.items() %}
+            <tr class="rowlink" onclick="window.location='/deployment/{{ id }}'">
+                <td>
+                    <span class="svc">
+                        {{ dep.name }}
+                        {% if dep.kind == 'gateway' %}<span class="kindtag">gateway</span>{% endif %}
+                        {% if dep.kind == 'landing' %}<span class="kindtag">landing</span>{% endif %}
+                        {% if dep.kind == 'console' %}<span class="kindtag">console</span>{% endif %}
+                        {% if dep.version and dep.kind not in ['gateway', 'console', 'landing'] %}<span class="kindtag">v{{ dep.version }}</span>{% endif %}
+                    </span>
+                </td>
+                {% if is_root %}<td><span class="muted">{{ dep.owner or 'root' }}</span></td>{% endif %}
+                <td><span class="regionpill">{{ ic('region') }}{{ dep.region or 'us-east-1' }}</span></td>
+                <td>{{ status_badge(dep.status) }}</td>
+                <td>
+                    {% if dep.resources.get('dns_fqdn') %}
+                        <a href="http://{{ dep.resources.dns_fqdn }}" target="_blank" class="hostlink" onclick="event.stopPropagation()">{{ dep.resources.dns_fqdn }}</a>
+                    {% elif dep.resources.get('alb_dns') %}
+                        <a href="http://{{ dep.resources.alb_dns }}" target="_blank" class="hostlink" onclick="event.stopPropagation()">{{ dep.resources.alb_dns[:40] }}…</a>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td><span class="mono muted">{{ dep.desired_instances if dep.desired_instances is not none else '—' }}</span></td>
+                <td class="muted">{{ dep.created_at[:10] }}</td>
+                <td class="r"><span class="rowarrow">{{ ic('chevronR') }}</span></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty">
+    {{ ic('box') }}
+    <h2>No services yet</h2>
+    <p>Add your first service to get started.</p>
+    <a href="/new" class="btn btn-primary">{{ ic('plus') }}Add service</a>
+</div>
+{% endif %}
+{% endblock %}

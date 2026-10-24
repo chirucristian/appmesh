@@ -1,0 +1,52 @@
+# ============================================================================
+#  GATEWAY ROUTE CONFIG — served from s3://upb-master-dissertation/conf/lb/<region>/application.yml
+#  Each regional gateway polls its own object (default every 30 s) and rebuilds routes.
+#  LOCAL DEMO: every region URL points at a service running on localhost.
+#  (This is intentionally laptop-only — the localhost URLs would not resolve in AWS.)
+# ============================================================================
+gateway:
+  services:
+    ambulance-service:
+      paths:
+        - /ambulance-service/**
+      health-check-path: /status
+      regions:
+        - name: local
+          url: http://localhost:8082
+
+    police-service:
+      paths:
+        - /police-service/**
+      health-check-path: /status
+      regions:
+        - name: local
+          url: http://localhost:8083
+
+    game-service:
+      paths:
+        - /game-service/**
+      health-check-path: /
+      regions:
+        - name: local
+          url: http://localhost:8084
+
+    gta-service:
+      paths:
+        - /gta-service/**
+      health-check-path: /
+      regions:
+        - name: local
+          url: http://localhost:8085
+
+  circuit-breaker:
+    failure-threshold: 3
+    success-threshold: 2
+    half-open-delay-seconds: 30
+
+  health-check:
+    interval-seconds: 15
+    timeout-seconds: 5
+
+  timeout:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 5000

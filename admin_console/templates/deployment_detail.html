@@ -1,0 +1,863 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic, status_badge, step_chip %}
+{% block title %}{{ dep.name }} — AppMesh Console{% endblock %}
+
+{% block content %}
+{% set live = dep.status in ['deployed', 'updating'] %}
+
+<!-- Back link -->
+<a href="/" class="backlink">{{ ic('arrowL') }}Services</a>
+
+<!-- Header -->
+<div class="phead">
+    <div>
+        <h1>
+            {{ dep.name }}
+            {% if dep.kind == 'gateway' %}<span class="kindtag">gateway</span>{% endif %}
+            {% if dep.kind == 'landing' %}<span class="kindtag">landing</span>{% endif %}
+            {% if dep.version and dep.kind not in ['gateway', 'console', 'landing'] %}<span class="kindtag">v{{ dep.version }}</span>{% endif %}
+            {{ status_badge(dep.status, id='status-badge') }}
+        </h1>
+        <div class="meta">
+            <span class="mi">{{ ic('region') }}{{ dep.region or 'us-east-1' }}</span>
+            <span class="mi">{{ ic('box') }}<code>{{ dep.jar_filename }}</code></span>
+            <span class="mi">{{ ic('users') }}{{ dep.owner or 'root' }}</span>
+            <span class="mi">{{ ic('clock') }}Deployed {{ dep.created_at[:10] }} · {{ dep.created_at[11:19] }}</span>
+        </div>
+    </div>
+    <div class="phead-actions">
+        {% if live %}<a href="#update-card" class="btn">{{ ic('upload') }}Update JAR</a>{% endif %}
+        {% if dep.status in ['deployed', 'updating', 'broken'] %}
+        <button class="btn btn-danger" id="teardown-btn" {% if dep.status == 'updating' %}disabled{% endif %}>{{ ic('trash') }}Teardown</button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- App URL strip -->
+{% if dep.resources and dep.resources.app_url and live %}
+<div class="urlstrip" id="app-url-banner">
+    <span class="lt"><span class="dot"></span>live</span>
+    <a href="{{ dep.resources.app_url }}" target="_blank" class="app-url-link">{{ dep.resources.app_url }}</a>
+    <button class="icon-btn" title="Copy URL" onclick="copyUrl(this, '{{ dep.resources.app_url }}')">{{ ic('copy') }}</button>
+    <a class="icon-btn" href="{{ dep.resources.app_url }}" target="_blank" title="Open">{{ ic('external') }}</a>
+</div>
+{% else %}
+<div class="urlstrip" id="app-url-banner" style="display:none">
+    <span class="lt"><span class="dot"></span>live</span>
+    <a href="#" target="_blank" class="app-url-link" id="app-url-link-dyn"></a>
+    <button class="icon-btn" id="copy-url-btn" style="display:none" title="Copy URL">{{ ic('copy') }}</button>
+    <a class="icon-btn" id="open-url-btn" href="#" target="_blank" style="display:none" title="Open">{{ ic('external') }}</a>
+</div>
+{% endif %}
+
+{% if live %}
+<!-- KPI strip -->
+<div class="kpis">
+    <div class="kpi">
+        <div class="kl">{{ ic('heart') }}Status</div>
+        <div class="kv" id="kpi-status">Healthy</div>
+        <div class="ks ok" id="kpi-status-sub">All checks passing</div>
+    </div>
+    <div class="kpi">
+        <div class="kl">{{ ic('server') }}Instances</div>
+        <div class="kv"><span id="kpi-running">{{ dep.desired_instances }}</span><span class="u"> / </span><span id="kpi-desired">{{ dep.desired_instances }}</span></div>
+        <div class="ks ok" id="kpi-instances-sub">desired {{ dep.desired_instances }}</div>
+    </div>
+    <div class="kpi">
+        <div class="kl">{{ ic('target') }}Targets</div>
+        <div class="kv"><span id="kpi-targets-healthy">—</span><span class="u"> / </span><span id="kpi-targets-total">—</span></div>
+        <div class="ks" id="kpi-targets-sub">passing health check</div>
+    </div>
+    <div class="kpi">
+        <div class="kl">{{ ic('activity') }}Auto-scaling</div>
+        <div class="kv"><span id="kpi-min">—</span><span class="u"> – </span><span id="kpi-max">—</span></div>
+        <div class="ks" id="kpi-range-sub">desired {{ dep.desired_instances }}</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Deployment -->
+<div class="panel">
+    <div class="panel-head"><span class="panel-title">{{ ic('idcard') }}Deployment</span></div>
+    <div class="panel-body" style="padding-top:4px;padding-bottom:4px">
+        <dl class="dl">
+            <div class="row"><dt>ID</dt><dd><code>{{ dep.id }}</code></dd></div>
+            <div class="row"><dt>JAR</dt><dd><code>{{ dep.jar_filename }}</code></dd></div>
+            <div class="row"><dt>Owner</dt><dd>{{ dep.owner or 'root' }}</dd></div>
+            <div class="row"><dt>Region</dt><dd>{{ dep.region or 'us-east-1' }}</dd></div>
+            <div class="row"><dt>Created</dt><dd>{{ dep.created_at[:19] }}</dd></div>
+            {% if dep.resources and dep.resources.dns_fqdn %}
+            <div class="row"><dt>Hostname</dt><dd><code>{{ dep.resources.dns_fqdn }}</code></dd></div>
+            {% endif %}
+            {% if dep.resources and dep.resources.alb_dns %}
+            <div class="row"><dt>ALB DNS</dt><dd><code>{{ dep.resources.alb_dns }}</code></dd></div>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+
+{% if service %}
+<!-- Regional topology -->
+<div class="panel" id="regions-card">
+    <div class="panel-head"><span class="panel-title">{{ ic('region') }}Regional topology</span></div>
+    <div class="panel-body" style="padding-top:8px;padding-bottom:10px">
+        <dl class="dl">
+            {% for rd in service.siblings %}
+            <div class="row">
+                <dt>
+                    {{ rd.region }}
+                    {% if rd.id == dep.id %}<span class="kindtag">current</span>{% endif %}
+                </dt>
+                <dd>
+                    {{ status_badge(rd.status) }}
+                    <code style="margin-left:8px">{{ rd.resources.get('dns_fqdn', 'pending') }}</code>
+                    {% if rd.status in ['deployed', 'broken'] %}
+                        {% if service.siblings|length > 1 %}
+                        <button class="btn btn-sm btn-danger" style="margin-left:8px"
+                                onclick="removeRegion('{{ rd.id }}', '{{ rd.region }}')">{{ ic('trash') }}Remove</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-danger" style="margin-left:8px"
+                                onclick="teardownRegion('{{ rd.id }}', '{{ rd.region }}')">{{ ic('trash') }}Teardown</button>
+                        {% endif %}
+                    {% endif %}
+                </dd>
+            </div>
+            {% endfor %}
+        </dl>
+
+        {% if live and service.available_regions %}
+        <div class="ctrl" style="margin-top:12px">
+            <span class="lab">Onboard to region</span>
+            <select id="service-region-select" class="input mono" style="width:auto;min-width:190px">
+                {% for r in service.available_regions %}
+                <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary" onclick="onboardSelectedRegion()">{{ ic('plus') }}Onboard</button>
+        </div>
+        {% elif live %}
+        <p class="muted" style="margin:10px 0 0">This service is already present in every onboarded platform region.</p>
+        {% endif %}
+
+        <div class="term" id="service-op-panel" style="display:none;margin-top:12px">
+            <div class="term-head">
+                <span class="term-title">{{ ic('term') }}<span id="service-op-title">Operation</span></span>
+                <span class="term-status"><span class="dot"></span>running</span>
+            </div>
+            <div class="term-body" id="service-op-log"></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Version history -->
+{% if dep.kind not in ['gateway', 'console', 'landing'] %}
+<div class="panel" id="history-card">
+    <div class="panel-head collapsible-title" id="history-toggle">
+        <span class="panel-title">{{ ic('clock') }}Version history{% if dep.history %} <span class="kindtag">{{ dep.history | length }} previous</span>{% endif %}</span>
+        <span class="collapse-chevron" id="history-chevron">▶</span>
+    </div>
+    <div class="panel-body" id="history-container" style="display:none;padding-top:6px;padding-bottom:8px">
+        <dl class="dl">
+            <div class="row">
+                <dt>v{{ dep.version or 1 }} <span class="kindtag">active</span></dt>
+                <dd>
+                    <code>{{ dep.jar_filename }}</code>
+                    <span class="muted" style="margin-left:8px">since {{ (dep.version_deployed_at or dep.created_at)[:19] | replace('T', ' ') }}</span>
+                </dd>
+            </div>
+            {% for h in dep.history or [] %}
+            <div class="row">
+                <dt class="muted">v{{ h.version }}</dt>
+                <dd>
+                    <code>{{ h.jar_filename }}</code>
+                    <span class="muted" style="margin-left:8px">{{ (h.deployed_at or '')[:19] | replace('T', ' ') }} → {{ (h.replaced_at or '')[:19] | replace('T', ' ') }}</span>
+                </dd>
+            </div>
+            {% endfor %}
+            {% if not dep.history %}
+            <div class="row"><dt class="muted">—</dt><dd class="muted">No previous versions yet. Updating the JAR archives the current version here (last 5 kept).</dd></div>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+{% endif %}
+
+<!-- Scaling -->
+{% if live %}
+<div class="panel" id="scale-card">
+    <div class="panel-head"><span class="panel-title">{{ ic('activity') }}Scaling</span></div>
+    <div class="panel-body">
+        <div class="scaler">
+            <div class="grp">
+                <div class="m"><div class="mv" id="current-desired">…</div><div class="ml">Desired</div></div>
+                <div class="m"><div class="mv" id="current-running">…</div><div class="ml">Running</div></div>
+                <div class="m"><div class="mv" id="current-healthy">…</div><div class="ml">Healthy</div></div>
+                <div class="m"><div class="mv" id="current-range">…</div><div class="ml">Min–Max</div></div>
+            </div>
+            <div class="ctrl">
+                <span class="lab">Set desired</span>
+                <div class="stepper">
+                    <button type="button" id="desired-dec">{{ ic('minus') }}</button>
+                    <input class="n" id="desired-input" type="number" min="0" step="1" placeholder="0">
+                    <button type="button" id="desired-inc">{{ ic('plus') }}</button>
+                </div>
+                <button class="btn btn-primary" id="scale-apply-btn">Apply</button>
+            </div>
+        </div>
+        <div id="scale-status" class="scale-status"></div>
+        <div id="instance-list" class="instance-list"></div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Update JAR + Deployment steps -->
+<div class="cols" id="bottom-grid">
+    {% if live %}
+    <div class="panel" id="update-card" style="margin-bottom:0">
+        <div class="panel-head"><span class="panel-title">{{ ic('upload') }}Update JAR</span></div>
+        <div class="panel-body">
+            <form id="update-form" class="upd" {% if dep.status == 'updating' %}style="display:none"{% endif %}>
+                <label class="drop" for="update-jar-input">
+                    {{ ic('box') }}<span>Drop a <b>.jar</b> to roll out via instance refresh</span>
+                </label>
+                <input type="file" id="update-jar-input" accept=".jar" style="display:none">
+                <button type="submit" class="btn btn-primary" id="update-btn">Deploy</button>
+            </form>
+
+            <div id="update-steps-wrapper" {% if dep.status != 'updating' and not dep.get('update_steps') %}style="display:none"{% endif %}>
+                <div class="collapsible-title panel-head" id="update-steps-toggle" style="padding:10px 0 6px;border-bottom:none">
+                    <span class="panel-title" style="font-size:12px">Update steps</span>
+                    <span class="collapse-chevron" id="update-steps-chevron">▼</span>
+                </div>
+                <div id="update-steps-container" class="steplist">
+                    {% if dep.get('update_steps') %}
+                    {% for key, step in dep.get('update_steps', {}).items() %}
+                    <div class="step {{ step.status }}" id="upd-step-{{ key }}">
+                        {{ step_chip(step.status) }}
+                        <span class="st"><b class="step-label">{{ step.label }}</b></span>
+                        <span class="sd step-detail">{{ step.detail }}</span>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+                <div id="update-banner" class="result-banner" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="panel" style="margin-bottom:0">
+        <div class="panel-head collapsible-title" id="deploy-steps-toggle">
+            <span class="panel-title">{{ ic('check') }}Deployment steps</span>
+            <span class="collapse-chevron" id="deploy-steps-chevron">{% if live %}▶{% else %}▼{% endif %}</span>
+        </div>
+        <div class="panel-body" style="padding-top:8px;padding-bottom:8px">
+            <div id="steps-container" class="steplist" {% if live %}style="display:none"{% endif %}>
+                {% for key, step in dep.steps.items() %}
+                <div class="step {{ step.status }}" id="step-{{ key }}">
+                    {{ step_chip(step.status) }}
+                    <span class="st"><b class="step-label">{{ step.label }}</b></span>
+                    <span class="sd step-detail">{{ step.detail }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div id="result-banner" class="result-banner" style="display:none"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Teardown steps -->
+{% if dep.status in ['tearing_down', 'torn_down', 'teardown_partial'] %}
+<div class="panel" id="teardown-card">
+    <div class="panel-head collapsible-title" id="teardown-steps-toggle">
+        <span class="panel-title">{{ ic('trash') }}Teardown steps</span>
+        <span class="collapse-chevron" id="teardown-steps-chevron">{% if dep.status in ['torn_down', 'teardown_partial'] %}▶{% else %}▼{% endif %}</span>
+    </div>
+    <div class="panel-body" style="padding-top:8px;padding-bottom:8px">
+        <div id="teardown-steps-container" class="steplist" {% if dep.status in ['torn_down', 'teardown_partial'] %}style="display:none"{% endif %}>
+            {% if dep.teardown_steps %}
+            {% for key, step in dep.teardown_steps.items() %}
+            <div class="step {{ step.status }}" id="td-step-{{ key }}">
+                {{ step_chip(step.status) }}
+                <span class="st"><b class="step-label">{{ step.label }}</b></span>
+                <span class="sd step-detail">{{ step.detail }}</span>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+        <div id="teardown-banner" class="result-banner" style="{% if dep.status == 'torn_down' %}{% elif dep.status == 'teardown_partial' %}{% else %}display:none{% endif %}">
+            {% if dep.status == 'torn_down' %}
+            <h3>Teardown complete</h3>
+            <p>All AWS resources have been deleted.</p>
+            <a href="/" class="btn btn-primary">{{ ic('arrowL') }}Dashboard</a>
+            {% elif dep.status == 'teardown_partial' %}
+            <h3>Partial teardown</h3>
+            <p>Some resources could not be deleted. Check the steps above.</p>
+            <a href="/" class="btn btn-primary">{{ ic('arrowL') }}Dashboard</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="panel" id="teardown-card" style="display:none">
+    <div class="panel-head collapsible-title" id="teardown-steps-toggle">
+        <span class="panel-title">{{ ic('trash') }}Teardown steps</span>
+        <span class="collapse-chevron" id="teardown-steps-chevron">▼</span>
+    </div>
+    <div class="panel-body" style="padding-top:8px;padding-bottom:8px">
+        <div id="teardown-steps-container" class="steplist"></div>
+        <div id="teardown-banner" class="result-banner" style="display:none"></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const depId = "{{ dep.id }}";
+const depStatus = "{{ dep.status }}";
+const resultBanner = document.getElementById('result-banner');
+
+function startServiceOp(title){
+    const panel = document.getElementById('service-op-panel');
+    const log = document.getElementById('service-op-log');
+    const titleEl = document.getElementById('service-op-title');
+    if (!panel || !log || !titleEl) return;
+    panel.style.display = 'block';
+    titleEl.textContent = title;
+    log.textContent = '';
+    const es = new EventSource('/api/regions/op/stream');
+    es.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.line) { log.textContent += d.line + '\n'; log.scrollTop = log.scrollHeight; }
+        if (d.status) { es.close(); setTimeout(() => location.reload(), 1800); }
+    };
+    es.onerror = () => es.close();
+}
+
+async function onboardSelectedRegion(){
+    const sel = document.getElementById('service-region-select');
+    if (!sel || !sel.value) return;
+    if (!confirm('Onboard this service in ' + sel.value + '?')) return;
+    const r = await fetch(`/api/deployments/${depId}/regions/${sel.value}/add`, {method: 'POST'});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(j.error || 'Error'); return; }
+    startServiceOp('Onboarding service in ' + sel.value);
+}
+
+// Remove one regional copy of a multi-region service (targets that row's dep id).
+async function removeRegion(targetId, regionName){
+    if (!confirm('Remove the ' + regionName + ' copy of this service?\n\nIts AWS resources in that region will be deleted.')) return;
+    const r = await fetch(`/api/deployments/${targetId}/regions/remove`, {method: 'POST'});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(j.error || 'Error'); return; }
+    startServiceOp('Removing ' + regionName + ' region');
+}
+
+// Tear down the last/only region — this deletes the whole service.
+async function teardownRegion(targetId, regionName){
+    if (targetId === depId) { startTeardown(); return; }
+    if (!confirm('Tear down the service in ' + regionName + '?\n\nAll AWS resources will be permanently deleted.')) return;
+    const resp = await fetch(`/api/deployments/${targetId}/teardown`, { method: 'POST' });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok && (data.status === 'started' || data.status === 'already_running')) {
+        startServiceOp('Tearing down service in ' + regionName);
+    } else {
+        alert(data.error || 'Error');
+    }
+}
+
+/* ── Inline icon helpers (line icons, currentColor) ─────── */
+const IC_PATHS = {
+    shield: '<path d="M10 2.5l5.5 2v4c0 3.6-2.3 6.4-5.5 7.5C6.8 14.9 4.5 12.1 4.5 8.5v-4z"/>',
+    key: '<circle cx="7" cy="9" r="3"/><path d="M9.5 10.5L16 17M14 15l1.5-1.5M12.5 13.5L14 12"/>',
+    idcard: '<rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><circle cx="7" cy="9.5" r="1.8"/><path d="M11 8.5h4M11 11.5h3"/>',
+    box: '<path d="M10 2.7l6 3.2v8.2l-6 3.2-6-3.2V5.9z"/><path d="M4.2 6L10 9.2 15.8 6M10 9.2V16.5"/>',
+    doc: '<path d="M5 2.5h6l4 4v11H5z"/><path d="M11 2.5v4h4M7.5 11h5M7.5 13.5h5"/>',
+    target: '<circle cx="10" cy="10" r="6.5"/><circle cx="10" cy="10" r="3"/><circle cx="10" cy="10" r="0.6" fill="currentColor"/>',
+    balance: '<path d="M10 3.5v13M4 7h12"/><path d="M4 7l-2 4.5h4zM16 7l-2 4.5h4z"/><path d="M2 11.5a2 2 0 004 0M14 11.5a2 2 0 004 0M7 16.5h6"/>',
+    activity: '<path d="M2.5 10.5h3l2-5 3 9 2-6 1.5 2h3.5"/>',
+    globe: '<circle cx="10" cy="10" r="7"/><path d="M3 10h14M10 3c2 2.2 2 11.8 0 14M10 3c-2 2.2-2 11.8 0 14"/>',
+    rule: '<path d="M3 6h14M3 10h9M3 14h14"/><circle cx="15" cy="10" r="1.8"/>',
+    check: '<path d="M4 10.5l3.5 3.5L16 6"/>',
+    x: '<path d="M5 5l10 10M15 5L5 15"/>',
+    minus: '<path d="M4 10h12"/>',
+    plus: '<path d="M10 4v12M4 10h12"/>',
+    trash: '<path d="M4 6h12M8 6V4.5h4V6M6 6l.7 10.5h6.6L14 6M8.5 9v5M11.5 9v5"/>',
+    arrowL: '<path d="M15 10H5M9 5l-5 5 5 5"/>',
+};
+function icon(k) {
+    return '<svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (IC_PATHS[k] || '') + '</svg>';
+}
+function setText(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+function copyUrl(btn, url) {
+    navigator.clipboard.writeText(url);
+    const orig = btn.innerHTML;
+    btn.innerHTML = icon('check');
+    setTimeout(() => { btn.innerHTML = orig; }, 1200);
+}
+
+/* ── Deploy SSE ─────────────────────────────────────────── */
+if (depStatus === 'deploying' || depStatus === 'pending') {
+    const evtSource = new EventSource(`/api/deploy/${depId}/stream`);
+    evtSource.onmessage = event => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'init') {
+            const container = document.getElementById('steps-container');
+            if (!container.children.length) {
+                data.steps.forEach(s => {
+                    const el = document.createElement('div');
+                    el.className = 'step pending';
+                    el.id = 'step-' + s.key;
+                    el.innerHTML = `<span class="sc idle"></span><span class="st"><b class="step-label">${s.label}</b></span><span class="sd step-detail"></span>`;
+                    container.appendChild(el);
+                });
+            }
+        } else if (data.step) {
+            updateStepRow('step-' + data.step, data, 'steps-container');
+        } else if (data.type === 'complete') {
+            evtSource.close();
+            setBadge('deployed');
+            const appUrl = data.resources && data.resources.app_url ? data.resources.app_url : '';
+            if (appUrl) {
+                const banner = document.getElementById('app-url-banner');
+                const link = banner.querySelector('.app-url-link');
+                if (link) { link.href = appUrl; link.textContent = appUrl; }
+                banner.style.display = 'flex';
+                const copyBtn = document.getElementById('copy-url-btn');
+                if (copyBtn) { copyBtn.style.display = ''; copyBtn.onclick = () => copyUrl(copyBtn, appUrl); }
+                const openBtn = document.getElementById('open-url-btn');
+                if (openBtn) { openBtn.style.display = ''; openBtn.href = appUrl; }
+            }
+            const stepsEl = document.getElementById('steps-container');
+            const chevron = document.getElementById('deploy-steps-chevron');
+            stepsEl.style.display = 'none';
+            if (chevron) chevron.textContent = '▶';
+
+            resultBanner.style.display = '';
+            resultBanner.className = 'result-banner success';
+            const hostLine = appUrl
+                ? `<a href="${appUrl}" target="_blank" class="dns-link">${appUrl}</a>`
+                : `<a href="http://${data.dns}" target="_blank" class="dns-link">${data.dns}</a>`;
+            resultBanner.innerHTML = `
+                <h3>Deployment complete</h3>
+                <p>Your application is live.</p>
+                ${hostLine}
+                <div style="margin-top:12px;display:flex;gap:8px">
+                    <button class="btn btn-danger" id="teardown-btn-dyn">${icon('trash')}Teardown</button>
+                    <a href="/" class="btn btn-primary">${icon('arrowL')}Dashboard</a>
+                </div>`;
+            document.getElementById('teardown-btn-dyn').addEventListener('click', startTeardown);
+            showScaleCard();
+        } else if (data.type === 'error') {
+            evtSource.close();
+            setBadge('failed');
+            resultBanner.style.display = '';
+            resultBanner.className = 'result-banner error';
+            resultBanner.innerHTML = `
+                <h3>Deployment failed</h3>
+                <p>${data.message}</p>
+                <a href="/new" class="btn btn-primary">Try again</a>`;
+        }
+    };
+    evtSource.onerror = () => evtSource.close();
+}
+
+/* ── Teardown ───────────────────────────────────────────── */
+if (depStatus === 'tearing_down') showTeardownStream();
+if (depStatus === 'torn_down' || depStatus === 'teardown_partial') {
+    const card = document.getElementById('teardown-card');
+    if (card) card.style.display = '';
+}
+
+const teardownBtn = document.getElementById('teardown-btn');
+if (teardownBtn) teardownBtn.addEventListener('click', startTeardown);
+
+async function startTeardown() {
+    if (!confirm('Tear down this deployment?\n\nAll AWS resources will be permanently deleted.')) return;
+    document.querySelectorAll('#teardown-btn, #teardown-btn-dyn').forEach(b => {
+        b.disabled = true;
+        b.textContent = 'Starting…';
+    });
+    const resp = await fetch(`/api/deployments/${depId}/teardown`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.status === 'started' || data.status === 'already_running') showTeardownStream();
+}
+
+function showTeardownStream() {
+    const card = document.getElementById('teardown-card');
+    card.style.display = '';
+    const container = document.getElementById('teardown-steps-container');
+    const banner = document.getElementById('teardown-banner');
+    setBadge('tearing_down');
+
+    const evtSource = new EventSource(`/api/deployments/${depId}/teardown/stream`);
+    evtSource.onmessage = event => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'init') {
+            container.innerHTML = '';
+            data.steps.forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'step pending';
+                el.id = 'td-step-' + s.key;
+                el.innerHTML = `<span class="sc idle"></span><span class="st"><b class="step-label">${s.label}</b></span><span class="sd step-detail"></span>`;
+                container.appendChild(el);
+            });
+        } else if (data.step) {
+            updateStepRow('td-step-' + data.step, data, 'teardown-steps-container');
+        } else if (data.type === 'td_complete') {
+            evtSource.close();
+            if (data.status === 'torn_down') {
+                setBadge('torn_down');
+                banner.style.display = '';
+                banner.className = 'result-banner success';
+                banner.innerHTML = `
+                    <h3>Teardown complete</h3>
+                    <p>All AWS resources have been deleted.</p>
+                    <a href="/" class="btn btn-primary">${icon('arrowL')}Dashboard</a>`;
+            } else {
+                setBadge('teardown_partial');
+                banner.style.display = '';
+                banner.className = 'result-banner error';
+                banner.innerHTML = `
+                    <h3>Partial teardown</h3>
+                    <p>Some resources could not be deleted.</p>
+                    <a href="/" class="btn btn-primary">${icon('arrowL')}Dashboard</a>`;
+            }
+            document.querySelectorAll('#teardown-btn, #teardown-btn-dyn').forEach(b => b.style.display = 'none');
+        }
+    };
+    evtSource.onerror = () => evtSource.close();
+}
+
+/* ── Live status → Targets KPI ──────────────────────────── */
+function renderLiveStatus(data) {
+    const tg = data.target_group;
+    if (tg && tg.status === 'active') {
+        setText('kpi-targets-healthy', tg.targets_healthy);
+        setText('kpi-targets-total', tg.targets_total);
+    }
+}
+
+let liveStatusTimer = null;
+async function fetchLiveStatus() {
+    try {
+        const resp = await fetch(`/api/deployments/${depId}/live-status`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderLiveStatus(data);
+    } catch(e) { /* ignore */ }
+}
+
+if (['deployed', 'updating', 'tearing_down', 'teardown_partial', 'failed', 'broken'].includes(depStatus)) {
+    fetchLiveStatus();
+    liveStatusTimer = setInterval(fetchLiveStatus, 30000);
+} else if (depStatus === 'deploying') {
+    liveStatusTimer = setInterval(fetchLiveStatus, 8000);
+    setTimeout(fetchLiveStatus, 3000);
+}
+
+/* ── Scale card (dynamic after deploy completes) ────────── */
+function showScaleCard() {
+    if (document.getElementById('scale-card')) return;
+    const card = document.createElement('div');
+    card.className = 'panel';
+    card.id = 'scale-card';
+    card.innerHTML = `
+        <div class="panel-head"><span class="panel-title">${icon('activity')}Scaling</span></div>
+        <div class="panel-body">
+            <div class="scaler">
+                <div class="grp">
+                    <div class="m"><div class="mv" id="current-desired">…</div><div class="ml">Desired</div></div>
+                    <div class="m"><div class="mv" id="current-running">…</div><div class="ml">Running</div></div>
+                    <div class="m"><div class="mv" id="current-healthy">…</div><div class="ml">Healthy</div></div>
+                    <div class="m"><div class="mv" id="current-range">…</div><div class="ml">Min–Max</div></div>
+                </div>
+                <div class="ctrl">
+                    <span class="lab">Set desired</span>
+                    <div class="stepper">
+                        <button type="button" id="desired-dec">${icon('minus')}</button>
+                        <input class="n" id="desired-input" type="number" min="0" step="1" placeholder="0">
+                        <button type="button" id="desired-inc">${icon('plus')}</button>
+                    </div>
+                    <button class="btn btn-primary" id="scale-apply-btn">Apply</button>
+                </div>
+            </div>
+            <div id="scale-status" class="scale-status"></div>
+            <div id="instance-list" class="instance-list"></div>
+        </div>`;
+    const anchor = document.getElementById('bottom-grid');
+    anchor.parentNode.insertBefore(card, anchor);
+    wireScaleControls();
+    fetchScale();
+    scaleRefreshTimer = setInterval(fetchScale, 15000);
+}
+
+/* ── Scaling ────────────────────────────────────────────── */
+let currentDesired = null;
+let scaleRefreshTimer = null;
+
+async function fetchScale() {
+    try {
+        const resp = await fetch(`/api/deployments/${depId}/scale`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        currentDesired = data.desired;
+
+        setText('current-desired', data.desired);
+        setText('current-running', data.running);
+        setText('current-healthy', data.healthy);
+        setText('current-range', `${data.min}–${data.max}`);
+
+        // KPI strip + pipeline.
+        setText('kpi-running', data.running);
+        setText('kpi-desired', data.desired);
+        setText('kpi-instances-sub', `desired ${data.desired}`);
+        setText('kpi-min', data.min);
+        setText('kpi-max', data.max);
+        setText('kpi-range-sub', `desired ${data.desired}`);
+        const statusKv = document.getElementById('kpi-status');
+        const statusSub = document.getElementById('kpi-status-sub');
+        if (statusKv && statusSub) {
+            if (data.running > 0 && data.healthy === data.running) {
+                statusKv.textContent = 'Healthy'; statusSub.textContent = 'All checks passing'; statusSub.className = 'ks ok';
+            } else if (data.running > 0) {
+                statusKv.textContent = 'Degraded'; statusSub.textContent = `${data.healthy}/${data.running} healthy`; statusSub.className = 'ks';
+            } else {
+                statusKv.textContent = 'Scaled to zero'; statusSub.textContent = '0 running'; statusSub.className = 'ks';
+            }
+        }
+        const inp = document.getElementById('desired-input');
+        if (inp && inp !== document.activeElement) inp.value = data.desired;
+
+        const listEl = document.getElementById('instance-list');
+        if (listEl && data.instances && data.instances.length) {
+            listEl.innerHTML = data.instances.map(i => `
+                <div class="instance-row">
+                    <code>${i.id}</code>
+                    <span>${i.az}</span>
+                    <span>${i.lifecycle}</span>
+                    <span class="instance-health ${i.health}">${i.health}</span>
+                </div>`).join('');
+        } else if (listEl) {
+            listEl.innerHTML = data.desired === 0
+                ? '<p style="text-align:center;padding:8px 0;color:var(--text-3);font-size:12px">Scaled to zero</p>'
+                : '';
+        }
+    } catch(e) { /* ignore */ }
+}
+
+async function applyScale() {
+    const inp = document.getElementById('desired-input');
+    const desired = parseInt(inp.value, 10);
+    const statusEl = document.getElementById('scale-status');
+    if (isNaN(desired) || desired < 0) {
+        statusEl.textContent = '✗ Enter a valid number ≥ 0';
+        statusEl.className = 'scale-status err';
+        return;
+    }
+    const applyBtn = document.getElementById('scale-apply-btn');
+    statusEl.textContent = `Scaling to ${desired}…`;
+    statusEl.className = 'scale-status';
+    applyBtn.disabled = true;
+
+    try {
+        const resp = await fetch(`/api/deployments/${depId}/scale`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({desired}),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            currentDesired = data.desired;
+            setText('current-desired', data.desired);
+            setText('current-range', `${data.min}–${data.max}`);
+            setText('kpi-desired', data.desired);
+            statusEl.textContent = `✓ Desired capacity → ${data.desired}`;
+            statusEl.className = 'scale-status ok';
+        } else {
+            statusEl.textContent = `✗ ${data.error}`;
+            statusEl.className = 'scale-status err';
+        }
+    } catch(e) {
+        statusEl.textContent = `✗ ${e.message}`;
+        statusEl.className = 'scale-status err';
+    }
+    applyBtn.disabled = false;
+    setTimeout(fetchScale, 3000);
+}
+
+function wireScaleControls() {
+    const applyBtn = document.getElementById('scale-apply-btn');
+    if (applyBtn) applyBtn.addEventListener('click', applyScale);
+    const inp = document.getElementById('desired-input');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') applyScale(); });
+    const dec = document.getElementById('desired-dec');
+    const inc = document.getElementById('desired-inc');
+    if (dec) dec.addEventListener('click', () => { if (inp) inp.value = Math.max(0, (parseInt(inp.value, 10) || 0) - 1); });
+    if (inc) inc.addEventListener('click', () => { if (inp) inp.value = (parseInt(inp.value, 10) || 0) + 1; });
+}
+
+if (depStatus === 'deployed' || depStatus === 'updating') {
+    wireScaleControls();
+    fetchScale();
+    scaleRefreshTimer = setInterval(fetchScale, 15000);
+}
+
+/* ── Helpers ────────────────────────────────────────────── */
+function updateStepRow(elId, data, containerId) {
+    let el = document.getElementById(elId);
+    if (!el) {
+        const container = document.getElementById(containerId);
+        el = document.createElement('div');
+        el.id = elId;
+        el.innerHTML = '<span class="sc"></span><span class="st"><b class="step-label"></b></span><span class="sd step-detail"></span>';
+        container.appendChild(el);
+    }
+    el.className = 'step ' + data.status;
+    const chip = el.querySelector('.sc');
+    const label = el.querySelector('.step-label');
+    const detail = el.querySelector('.step-detail');
+    if (label) label.textContent = data.label;
+    if (detail) detail.textContent = data.detail || '';
+    if (chip) {
+        if (data.status === 'done')        { chip.className = 'sc';      chip.innerHTML = icon('check'); }
+        else if (data.status === 'running'){ chip.className = 'sc run';  chip.innerHTML = icon('check'); }
+        else if (data.status === 'failed') { chip.className = 'sc fail'; chip.innerHTML = icon('x'); }
+        else                               { chip.className = 'sc idle'; chip.innerHTML = ''; }
+    }
+}
+
+function setBadge(status) {
+    const MAP = {
+        deployed:         ['badge',            '<span class="dot"></span>deployed'],
+        deploying:        ['badge badge-amber','<span class="dot pulse"></span>deploying'],
+        updating:         ['badge badge-amber','<span class="dot pulse"></span>updating'],
+        tearing_down:     ['badge badge-amber','<span class="dot pulse"></span>tearing down'],
+        failed:           ['badge badge-red',  '<span class="dot"></span>failed'],
+        teardown_partial: ['badge badge-red',  '<span class="dot"></span>teardown partial'],
+        broken:           ['badge badge-red',  '<span class="dot"></span>broken'],
+        torn_down:        ['badge badge-neutral', 'torn down'],
+    };
+    const [cls, html] = MAP[status] || ['badge badge-neutral', status];
+    document.querySelectorAll('#status-badge, #status-badge-info').forEach(el => {
+        el.className = cls;
+        el.innerHTML = html;
+    });
+}
+
+/* ── Collapsible ────────────────────────────────────────── */
+function setupCollapsible(toggleId, containerId, chevronId) {
+    const toggle = document.getElementById(toggleId);
+    if (!toggle) return;
+    toggle.addEventListener('click', () => {
+        const container = document.getElementById(containerId);
+        const chevron = document.getElementById(chevronId);
+        if (!container) return;
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? '' : 'none';
+        if (chevron) chevron.textContent = isHidden ? '▼' : '▶';
+    });
+}
+setupCollapsible('deploy-steps-toggle', 'steps-container', 'deploy-steps-chevron');
+setupCollapsible('teardown-steps-toggle', 'teardown-steps-container', 'teardown-steps-chevron');
+setupCollapsible('update-steps-toggle', 'update-steps-container', 'update-steps-chevron');
+setupCollapsible('history-toggle', 'history-container', 'history-chevron');
+
+/* ── JAR Update ─────────────────────────────────────────── */
+const updateForm = document.getElementById('update-form');
+const updateJarInput = document.getElementById('update-jar-input');
+if (updateJarInput) {
+    updateJarInput.addEventListener('change', () => {
+        const span = document.querySelector('#update-form .drop span');
+        if (span && updateJarInput.files.length) span.innerHTML = `Selected <b>${updateJarInput.files[0].name}</b>`;
+    });
+}
+if (updateForm) {
+    updateForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const fileInput = document.getElementById('update-jar-input');
+        if (!fileInput.files.length) { alert('Choose a .jar file first'); return; }
+
+        const btn = document.getElementById('update-btn');
+        btn.disabled = true;
+        btn.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('jar', fileInput.files[0]);
+
+        try {
+            const resp = await fetch(`/api/deployments/${depId}/update`, { method: 'POST', body: fd });
+            const data = await resp.json();
+            if (data.status === 'started') {
+                updateForm.style.display = 'none';
+                setBadge('updating');
+                showUpdateStream();
+            } else {
+                alert(data.error || 'Failed to start update');
+                btn.disabled = false;
+                btn.textContent = 'Deploy';
+            }
+        } catch(err) {
+            alert('Error: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'Deploy';
+        }
+    });
+}
+
+function showUpdateStream() {
+    const wrapper = document.getElementById('update-steps-wrapper');
+    if (wrapper) wrapper.style.display = '';
+    const container = document.getElementById('update-steps-container');
+    const banner = document.getElementById('update-banner');
+
+    const evtSource = new EventSource(`/api/deployments/${depId}/update/stream`);
+    evtSource.onmessage = event => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'init') {
+            container.innerHTML = '';
+            data.steps.forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'step pending';
+                el.id = 'upd-step-' + s.key;
+                el.innerHTML = `<span class="sc idle"></span><span class="st"><b class="step-label">${s.label}</b></span><span class="sd step-detail"></span>`;
+                container.appendChild(el);
+            });
+        } else if (data.step) {
+            updateStepRow('upd-step-' + data.step, data, 'update-steps-container');
+        } else if (data.type === 'update_complete') {
+            evtSource.close();
+            setBadge('deployed');
+            banner.style.display = '';
+            banner.className = 'result-banner success';
+            banner.innerHTML = `<h3>JAR updated</h3><p>All instances refreshed with the new JAR.</p>`;
+            if (updateForm) {
+                updateForm.style.display = '';
+                const btn = document.getElementById('update-btn');
+                if (btn) { btn.disabled = false; btn.textContent = 'Deploy'; }
+            }
+            fetchLiveStatus();
+            fetchScale();
+        } else if (data.type === 'update_error') {
+            evtSource.close();
+            setBadge('deployed');
+            banner.style.display = '';
+            banner.className = 'result-banner error';
+            banner.innerHTML = `<h3>Update failed</h3><p>${data.message}</p>`;
+            if (updateForm) {
+                updateForm.style.display = '';
+                const btn = document.getElementById('update-btn');
+                if (btn) { btn.disabled = false; btn.textContent = 'Deploy'; }
+            }
+        }
+    };
+    evtSource.onerror = () => evtSource.close();
+}
+
+if (depStatus === 'updating') showUpdateStream();
+</script>
+{% endblock %}

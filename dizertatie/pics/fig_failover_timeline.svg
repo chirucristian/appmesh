@@ -1,0 +1,30 @@
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="820" height="200" fill="#ffffff"/>
+  <defs>
+    <marker id="tick" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><circle cx="3" cy="3" r="2.4" fill="#3F5E84"/></marker>
+  </defs>
+
+  <!-- state band: circuit breaker of the primary region (local-a) -->
+  <rect x="60"  y="84" width="180" height="30" fill="#DCEBD0" stroke="#639922" stroke-width="1"/>
+  <rect x="240" y="84" width="300" height="30" fill="#E9DCC6" stroke="#B07A3C" stroke-width="1"/>
+  <rect x="540" y="84" width="220" height="30" fill="#DCEBD0" stroke="#639922" stroke-width="1"/>
+  <text x="150" y="103" text-anchor="middle" font-size="12" fill="#3a5a22">CLOSED</text>
+  <text x="390" y="103" text-anchor="middle" font-size="12" fill="#7a531f">OPEN (primar ocolit)</text>
+  <text x="650" y="103" text-anchor="middle" font-size="12" fill="#3a5a22">CLOSED</text>
+  <text x="60" y="78" font-size="11" fill="#666666">circuit breaker (local-a):</text>
+
+  <!-- event ticks -->
+  <line x1="240" y1="60" x2="240" y2="84" stroke="#3F5E84" stroke-width="1.4" marker-start="url(#tick)"/>
+  <line x1="240" y1="114" x2="240" y2="150" stroke="#B07A3C" stroke-width="1.2" stroke-dasharray="3,3"/>
+  <line x1="430" y1="60" x2="430" y2="84" stroke="#3F5E84" stroke-width="1.4" marker-start="url(#tick)"/>
+  <line x1="540" y1="114" x2="540" y2="150" stroke="#639922" stroke-width="1.2" stroke-dasharray="3,3"/>
+
+  <!-- event labels -->
+  <text x="240" y="52" text-anchor="middle" font-size="12" fill="#000000">kill local-a (t = 0)</text>
+  <text x="240" y="166" text-anchor="middle" font-size="11" fill="#7a531f">CB → Open (~5 s)</text>
+  <text x="430" y="52" text-anchor="middle" font-size="12" fill="#000000">restart local-a</text>
+  <text x="540" y="166" text-anchor="middle" font-size="11" fill="#3a5a22">CB → Closed (~22 s)</text>
+
+  <!-- bottom note -->
+  <text x="410" y="190" text-anchor="middle" font-size="11.5" fill="#444444">În timpul defecțiunii: 146 cereri prin gateway, 0 eșuate (retry per-cerere către local-b).</text>
+</svg>

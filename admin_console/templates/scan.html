@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic %}
+{% block title %}Scan AWS — AppMesh Console{% endblock %}
+
+{% block content %}
+<div class="phead">
+    <div>
+        <h1>Scan AWS</h1>
+        <p class="sub">Discovers appmesh-* resources across regions, groups them by deployment, and flags drift.</p>
+    </div>
+    <div class="phead-actions">
+        <span class="panel-ts" id="scan-status-text">Not scanned yet</span>
+        <button class="btn btn-primary" id="start-scan-btn">{{ ic('radar') }}Run scan</button>
+    </div>
+</div>
+
+<!-- Progress terminal -->
+<div class="term" id="progress-card" style="display:none;margin-bottom:16px">
+    <div class="term-head">
+        <span class="term-title">{{ ic('term') }}Scanning AWS &amp; Cloudflare</span>
+        <span class="term-status" id="scan-term-status"><span class="dot"></span>running</span>
+    </div>
+    <div class="term-body" id="progress-container"></div>
+</div>
+
+<!-- Results -->
+<div id="results-section" style="display:none">
+    <span class="badge badge-neutral" id="count-badge" style="display:none"></span>
+    <div id="deployments-list"></div>
+    <div id="no-deployments" class="empty" style="display:none">
+        {{ ic('radar') }}
+        <h2>No appmesh resources found</h2>
+        <p>No appmesh-* resources were discovered in any region.</p>
+    </div>
+
+    <div id="orphans-card" style="display:none">
+        <div class="sectionlabel">{{ ic('alert') }}Orphans — no matching AWS deployment <span class="badge badge-red" id="orphan-count-badge" style="margin-left:6px"></span></div>
+        <div class="panel scangroup orphan" style="margin-bottom:0">
+            <div class="panel-head">
+                <span class="panel-title">Cloudflare + S3 leftovers</span>
+                <button class="btn btn-sm btn-danger" id="cleanup-s3-btn">{{ ic('trash') }}Clean up all</button>
+            </div>
+            <div class="panel-body" style="padding-top:6px;padding-bottom:8px">
+                <div id="orphans-list" class="scanrows"></div>
+                <div id="cleanup-status" class="scale-status" style="margin-top:8px"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const startBtn = document.getElementById('start-scan-btn');
+const statusText = document.getElementById('scan-status-text');
+const progressCard = document.getElementById('progress-card');
+const progressContainer = document.getElementById('progress-container');
+const resultsSection = document.getElementById('results-section');
+
+/* ── Inline line icons ──────────────────────────────────── */
+const IC_PATHS = {
+    shield: '<path d="M10 2.5l5.5 2v4c0 3.6-2.3 6.4-5.5 7.5C6.8 14.9 4.5 12.1 4.5 8.5v-4z"/>',
+    key: '<circle cx="7" cy="9" r="3"/><path d="M9.5 10.5L16 17M14 15l1.5-1.5M12.5 13.5L14 12"/>',
+    idcard: '<rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><circle cx="7" cy="9.5" r="1.8"/><path d="M11 8.5h4M11 11.5h3"/>',
+    doc: '<path d="M5 2.5h6l4 4v11H5z"/><path d="M11 2.5v4h4M7.5 11h5M7.5 13.5h5"/>',
+    target: '<circle cx="10" cy="10" r="6.5"/><circle cx="10" cy="10" r="3"/><circle cx="10" cy="10" r="0.6" fill="currentColor"/>',
+    balance: '<path d="M10 3.5v13M4 7h12"/><path d="M4 7l-2 4.5h4zM16 7l-2 4.5h4z"/><path d="M2 11.5a2 2 0 004 0M14 11.5a2 2 0 004 0M7 16.5h6"/>',
+    rule: '<path d="M3 6h14M3 10h9M3 14h14"/><circle cx="15" cy="10" r="1.8"/>',
+    activity: '<path d="M2.5 10.5h3l2-5 3 9 2-6 1.5 2h3.5"/>',
+    globe: '<circle cx="10" cy="10" r="7"/><path d="M3 10h14M10 3c2 2.2 2 11.8 0 14M10 3c-2 2.2-2 11.8 0 14"/>',
+    region: '<path d="M10 17s5.5-4.7 5.5-9A5.5 5.5 0 0010 2.5 5.5 5.5 0 004.5 8c0 4.3 5.5 9 5.5 9z"/><circle cx="10" cy="8" r="2"/>',
+    box: '<path d="M10 2.7l6 3.2v8.2l-6 3.2-6-3.2V5.9z"/><path d="M4.2 6L10 9.2 15.8 6M10 9.2V16.5"/>',
+    import: '<path d="M10 3v9M6.5 8.5L10 12l3.5-3.5M4 14.5v1a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5v-1"/>',
+    trash: '<path d="M4 6h12M8 6V4.5h4V6M6 6l.7 10.5h6.6L14 6M8.5 9v5M11.5 9v5"/>',
+    radar: '<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.6" opacity=".45"/><path d="M10 10l4.8-4.8M10 3v2"/><circle cx="10" cy="10" r="0.7" fill="currentColor" stroke="none"/>',
+};
+function icon(k) {
+    return '<svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (IC_PATHS[k] || '') + '</svg>';
+}
+
+startBtn.addEventListener('click', startScan);
+
+function setTermStatus(state) {
+    const el = document.getElementById('scan-term-status');
+    if (!el) return;
+    if (state === 'running')      { el.className = 'term-status';      el.innerHTML = '<span class="dot"></span>running'; }
+    else if (state === 'complete'){ el.className = 'term-status done'; el.innerHTML = '<span class="dot"></span>complete'; }
+    else                          { el.className = 'term-status fail'; el.innerHTML = '<span class="dot"></span>failed'; }
+}
+
+function showScanning() {
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<span class="btn-spinner"></span>Scanning…';
+    statusText.textContent = 'Scan in progress…';
+    progressCard.style.display = '';
+    progressContainer.innerHTML = '';
+    resultsSection.style.display = 'none';
+    setTermStatus('running');
+}
+
+async function startScan() {
+    showScanning();
+    try {
+        const resp = await fetch('/api/scan', { method: 'POST' });
+        const data = await resp.json();
+        if (data.status === 'started' || data.status === 'already_running') {
+            connectStream();
+        }
+    } catch (e) {
+        statusText.textContent = 'Error starting scan: ' + e.message;
+        startBtn.disabled = false;
+        startBtn.innerHTML = icon('radar') + 'Run scan';
+    }
+}
+
+/* Re-attach on load: the scan runs server-side & globally, so it survives leaving
+   the tab, reloading, or a different (root) user logging in. */
+(async function restoreScan() {
+    try {
+        const resp = await fetch('/api/scan/state');
+        if (!resp.ok) return;
+        const st = await resp.json();
+        if (st.status === 'running') {
+            showScanning();
+            connectStream();                       // stream replays steps so far, then continues live
+        } else if (st.status === 'done') {
+            startBtn.innerHTML = icon('radar') + 'Re-scan';
+            const t = st.finished_at ? new Date(st.finished_at * 1000).toLocaleTimeString() : '';
+            statusText.textContent = 'Last scan complete' + (t ? ' · ' + t : '');
+            renderResults(st.groups, st.orphan_s3_files);
+        } else if (st.status === 'error') {
+            startBtn.innerHTML = icon('radar') + 'Retry scan';
+            statusText.textContent = 'Last scan failed.';
+        }
+    } catch (e) { /* ignore */ }
+})();
+
+function connectStream() {
+    const evtSource = new EventSource('/api/scan/stream');
+
+    evtSource.onmessage = event => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'step') {
+            addProgressStep(data.step, data.detail);
+        } else if (data.type === 'complete') {
+            evtSource.close();
+            markLastDone();
+            setTermStatus('complete');
+            startBtn.disabled = false;
+            startBtn.innerHTML = icon('radar') + 'Re-scan';
+            const t = data.finished_at ? new Date(data.finished_at * 1000).toLocaleTimeString() : new Date().toLocaleTimeString();
+            statusText.textContent = 'Scan complete · ' + t;
+            renderResults(data.groups, data.orphan_s3_files);
+        } else if (data.type === 'error') {
+            evtSource.close();
+            markLastDone();
+            setTermStatus('fail');
+            startBtn.disabled = false;
+            startBtn.innerHTML = icon('radar') + 'Retry scan';
+            statusText.textContent = 'Scan failed.';
+        }
+    };
+
+    evtSource.onerror = () => evtSource.close();
+}
+
+function markLastDone() {
+    const prev = progressContainer.querySelector('.tl .run');
+    if (prev) { prev.className = 'ok'; prev.textContent = '✓ ' + prev.textContent.replace(/^▸ /, ''); }
+}
+
+function addProgressStep(step, detail) {
+    markLastDone();
+    const time = new Date().toLocaleTimeString();
+    const nice = step.replace(/_/g, ' ');
+    const line = document.createElement('div');
+    line.className = 'tl';
+    line.innerHTML = `<span class="ts">${time}</span><span class="run">▸ ${nice}${detail ? ' — ' + detail : ''}</span>`;
+    progressContainer.appendChild(line);
+    progressContainer.scrollTop = progressContainer.scrollHeight;
+}
+
+function groupPanel(uid, g, cls) {
+    const resList = [
+        ['shield', 'Security Group', g.resources.security_group_id],
+        ['key', 'IAM Role', g.resources.iam_role_name],
+        ['idcard', 'Instance Profile', g.resources.instance_profile_name],
+        ['doc', 'Launch Template', g.resources.launch_template_id],
+        ['target', 'Target Group', g.resources.target_group_name || (g.resources.target_group_arn ? 'target group' : null)],
+        ['balance', 'Load Balancer', g.resources.alb_name],
+        ['rule', 'Listener Rule', g.resources.listener_arn ? 'host-based rule' : null],
+        ['activity', 'Auto Scaling Group', g.resources.asg_name],
+        ['globe', 'DNS Record', g.resources.dns_fqdn],
+    ];
+    let rows = '';
+    for (const [ik, label, val] of resList) {
+        rows += `<div class="scanrow">${icon(ik)}<code>${val || label}</code>${val ? '<span class="have">found</span>' : '<span class="miss">missing</span>'}</div>`;
+    }
+
+    let right;
+    if (g.has_s3_config) {
+        right = `<span class="badge"><span class="dot"></span>complete · imported</span>
+                 <a href="/deployment/${g.s3_dep_id}" class="btn btn-sm">View</a>`;
+    } else {
+        let btns = '';
+        if (g.health !== 'orphan_dns') btns += `<button class="btn btn-sm scan-import-btn" data-uid="${uid}">${icon('import')}Import</button>`;
+        if (g.health === 'broken' || g.health === 'orphan_dns') btns += `<button class="btn btn-sm btn-danger scan-teardown-btn" data-uid="${uid}">${icon('trash')}Teardown</button>`;
+        right = btns;
+    }
+
+    return `
+    <div class="panel scangroup ${cls}">
+        <div class="panel-head">
+            <span class="panel-title">${g.name} <span class="regionpill" style="margin-left:4px">${icon('region')}${g.region}</span></span>
+            <div style="display:flex;align-items:center;gap:8px">${right}</div>
+        </div>
+        <div class="panel-body" style="padding-top:6px;padding-bottom:6px">
+            <div class="scanrows">${rows}</div>
+        </div>
+    </div>`;
+}
+
+function renderResults(groups, orphanS3) {
+    resultsSection.style.display = '';
+    const listEl = document.getElementById('deployments-list');
+    const noDeployments = document.getElementById('no-deployments');
+    document.getElementById('count-badge').textContent = Object.keys(groups).length;
+
+    const entries = Object.entries(groups);
+    if (!entries.length) {
+        listEl.innerHTML = '';
+        noDeployments.style.display = '';
+    } else {
+        noDeployments.style.display = 'none';
+        const cats = {
+            healthy:    { icon: 'box',   label: 'Healthy — tracked in console',      cls: '',       items: [] },
+            broken:     { icon: 'rule',  label: 'Broken — partial resource set',      cls: 'broken', items: [] },
+            orphan_dns: { icon: 'globe', label: 'Orphans — no matching AWS deployment', cls: 'orphan', items: [] },
+        };
+        for (const [uid, g] of entries) (cats[g.health] || cats.broken).items.push([uid, g]);
+
+        let html = '';
+        for (const key of ['healthy', 'broken', 'orphan_dns']) {
+            const c = cats[key];
+            if (!c.items.length) continue;
+            html += `<div class="sectionlabel">${icon(c.icon)}${c.label} · ${c.items.length}</div>`;
+            for (const [uid, g] of c.items) html += groupPanel(uid, g, c.cls);
+        }
+        listEl.innerHTML = html;
+        wireResultButtons();
+    }
+
+    renderOrphans(orphanS3);
+}
+
+function wireResultButtons() {
+    document.querySelectorAll('.scan-import-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const uid = btn.dataset.uid;
+            btn.disabled = true;
+            btn.textContent = 'Importing…';
+            try {
+                const resp = await fetch('/api/scan/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid }),
+                });
+                const data = await resp.json();
+                if (data.status === 'imported') {
+                    btn.textContent = '✓ Imported';
+                    btn.className = 'btn btn-sm';
+                    const link = document.createElement('a');
+                    link.href = `/deployment/${data.dep_id}`;
+                    link.className = 'btn btn-sm';
+                    link.textContent = 'View';
+                    link.style.marginLeft = '6px';
+                    btn.parentNode.appendChild(link);
+                } else {
+                    btn.textContent = 'Error';
+                    alert(data.error || 'Import failed');
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                alert(e.message);
+            }
+        });
+    });
+
+    document.querySelectorAll('.scan-teardown-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const uid = btn.dataset.uid;
+            if (!confirm(`Teardown all resources for deployment ${uid}?\n\nThis will permanently delete all AWS resources.`)) return;
+            btn.disabled = true;
+            btn.textContent = 'Starting…';
+            try {
+                const resp = await fetch('/api/scan/teardown', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid }),
+                });
+                const data = await resp.json();
+                if (data.status === 'started') {
+                    btn.textContent = 'Tearing down…';
+                    window.location.href = `/deployment/${data.dep_id}`;
+                } else {
+                    btn.textContent = 'Error';
+                    alert(data.error || 'Teardown failed');
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                alert(e.message);
+            }
+        });
+    });
+}
+
+function renderOrphans(orphanS3) {
+    const orphansCard = document.getElementById('orphans-card');
+    const orphansList = document.getElementById('orphans-list');
+    const orphanCountBadge = document.getElementById('orphan-count-badge');
+
+    if (orphanS3 && orphanS3.length) {
+        orphansCard.style.display = '';
+        orphanCountBadge.textContent = orphanS3.length;
+
+        orphansList.innerHTML = orphanS3.map(o => `
+            <div class="scanrow">
+                ${icon('box')}<code>${o.name} · ${o.dep_id}</code>
+                <span class="regionpill" style="margin-left:auto">${icon('region')}${o.region}</span>
+                <span class="miss" style="margin-left:10px">orphan config</span>
+            </div>`).join('');
+
+        document.getElementById('cleanup-s3-btn').addEventListener('click', async function() {
+            if (!confirm(`Remove ${orphanS3.length} orphaned S3 config file(s)?\n\nThis cannot be undone.`)) return;
+            this.disabled = true;
+            this.textContent = 'Cleaning…';
+            const statusEl = document.getElementById('cleanup-status');
+            try {
+                const resp = await fetch('/api/scan/cleanup-s3', { method: 'POST' });
+                const data = await resp.json();
+                statusEl.textContent = `✓ Removed ${data.removed.length} file(s)`;
+                statusEl.className = 'scale-status ok';
+                if (data.errors.length) statusEl.textContent += ` (${data.errors.length} error(s))`;
+                this.style.display = 'none';
+                orphansList.innerHTML = '<p style="text-align:center;padding:8px 0;color:var(--text-3);font-size:12px">All orphaned configs removed.</p>';
+            } catch (e) {
+                statusEl.textContent = '✗ ' + e.message;
+                statusEl.className = 'scale-status err';
+                this.disabled = false;
+                this.textContent = 'Retry cleanup';
+            }
+        });
+    } else {
+        orphansCard.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

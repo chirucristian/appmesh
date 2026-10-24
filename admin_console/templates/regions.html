@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic %}
+{% block title %}Regions — AppMesh Console{% endblock %}
+
+{% block content %}
+<div class="phead">
+    <div>
+        <h1>Regions</h1>
+        <p class="sub">Each onboarded region runs one shared ALB, a gateway service, one Cloudflare origin pool, and participates in the appmesh.org load balancer. Current Cloudflare limit: {{ max_regions }} regions.</p>
+    </div>
+</div>
+
+<div class="regiongrid">
+    {% for r in active %}
+    {% set is_op = op.region == r.id and op.status in ['running', 'done', 'error'] %}
+    <div class="regioncard{% if is_op and op.status == 'running' %} op-busy{% endif %}{% if is_op and op.status == 'error' %} op-error{% endif %}" data-region="{{ r.id }}">
+        <div class="rhead">
+            <span class="rname">{{ ic('region') }}{{ r.id }}</span>
+            {% if is_op and op.status == 'running' %}
+            <span class="badge badge-warn"><span class="dot pulse"></span>{{ 'removing' if op.mode == 'remove' else 'updating' }}</span>
+            {% elif is_op and op.status == 'error' %}
+            <span class="badge badge-danger">error</span>
+            {% else %}
+            <span class="badge"><span class="dot"></span>active</span>
+            {% endif %}
+        </div>
+        <div class="rfacts">
+            <div class="rfact">{{ ic('balance') }}Shared ALB<span class="ok"><span class="dot"></span>healthy</span></div>
+            <div class="rfact">{{ ic('term') }}Gateway <b>{{ r.gateway or '—' }}</b><span class="ok"><span class="dot"></span>1/1</span></div>
+            <div class="rfact">{{ ic('box') }}<span><b>{{ r.services }}</b> service{{ '' if r.services == 1 else 's' }} deployed</span></div>
+            {% if r.onboarded %}<div class="rfact">{{ ic('clock') }}Onboarded {{ r.onboarded }}</div>{% endif %}
+            {% if is_op and op.last_line %}
+            <div class="op-note mono">{{ op.last_line }}</div>
+            {% endif %}
+        </div>
+        <div class="rfoot">
+            {% if r.console %}
+            <span class="badge badge-neutral">console region</span>
+            {% else %}
+            <button class="btn btn-sm btn-danger" onclick="opRegion('{{ r.id }}','remove')" {% if op.status == 'running' %}disabled{% endif %}>{{ ic('trash') }}Remove region</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% for r in available %}
+    {% set is_op = op.region == r and op.status in ['running', 'done', 'error'] %}
+    <div class="regioncard off{% if is_op and op.status == 'running' %} op-busy{% endif %}{% if is_op and op.status == 'error' %} op-error{% endif %}" data-region="{{ r }}">
+        <div class="rhead">
+            <span class="rname">{{ ic('region') }}{{ r }}</span>
+            {% if is_op and op.status == 'running' %}
+            <span class="badge badge-warn"><span class="dot pulse"></span>onboarding</span>
+            {% elif is_op and op.status == 'error' %}
+            <span class="badge badge-danger">error</span>
+            {% else %}
+            <span class="badge badge-neutral">not onboarded</span>
+            {% endif %}
+        </div>
+        <div class="rfacts">
+            <p class="offnote"><b>{{ region_labels.get(r, r) }}</b><br>Onboarding creates the shared ALB, deploys the gateway JAR, registers DNS, and updates the Cloudflare appmesh.org load balancer. Takes ~4 minutes.</p>
+            {% if is_op and op.last_line %}
+            <div class="op-note mono">{{ op.last_line }}</div>
+            {% endif %}
+        </div>
+        <div class="rfoot">
+            <button class="btn btn-sm btn-primary" onclick="opRegion('{{ r }}','add')" {% if at_region_limit or op.status == 'running' %}disabled title="{{ 'Cloudflare subscription currently allows ' ~ max_regions ~ ' origin pools' if at_region_limit else 'Another region operation is running' }}"{% endif %}>
+                {% if is_op and op.status == 'running' %}<span class="btn-spinner"></span>Onboarding{% else %}{{ ic('plus') }}Onboard region{% endif %}
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="term" id="op-panel" {% if op.status in ['running', 'done', 'error'] %}{% else %}style="display:none"{% endif %}>
+    <div class="term-head">
+        <span class="term-title">{{ ic('term') }}<span id="op-title">{{ op.title or 'Operation' }}</span></span>
+        <span class="term-status{% if op.status == 'done' %} done{% elif op.status == 'error' %} fail{% endif %}" id="op-status"><span class="dot"></span><span id="op-status-text">{{ op.status if op.status in ['done', 'error'] else 'running' }}</span></span>
+    </div>
+    <div class="term-body" id="op-log">{% if op.log %}{{ op.log | join('\n') }}{% endif %}</div>
+</div>
+
+<script>
+const opPanel = document.getElementById('op-panel');
+const opLog = document.getElementById('op-log');
+const opTitle = document.getElementById('op-title');
+const opStatus = document.getElementById('op-status');
+const opStatusText = document.getElementById('op-status-text');
+
+function setOpStatus(status){
+    opStatus.classList.toggle('done', status === 'done');
+    opStatus.classList.toggle('fail', status === 'error');
+    opStatusText.textContent = status === 'error' ? 'error' : (status === 'done' ? 'done' : 'running');
+}
+
+function setRegionOp(region, mode, status, line){
+    const card = document.querySelector('[data-region="' + CSS.escape(region || '') + '"]');
+    if (!card) return;
+    card.classList.toggle('op-busy', status === 'running');
+    card.classList.toggle('op-error', status === 'error');
+    card.querySelectorAll('button').forEach(btn => { btn.disabled = status === 'running'; });
+    const badge = card.querySelector('.rhead .badge');
+    if (badge && status === 'running') {
+        badge.className = 'badge badge-warn';
+        badge.innerHTML = '<span class="dot pulse"></span>' + (mode === 'remove' ? 'removing' : 'onboarding');
+    } else if (badge && status === 'error') {
+        badge.className = 'badge badge-danger';
+        badge.textContent = 'error';
+    }
+    let note = card.querySelector('.op-note');
+    if (!note && line) {
+        note = document.createElement('div');
+        note.className = 'op-note mono';
+        card.querySelector('.rfacts')?.appendChild(note);
+    }
+    if (note && line) note.textContent = line;
+}
+
+async function opRegion(region, mode){
+    const verb = mode === 'add' ? 'Onboard' : 'Remove';
+    if (!confirm(verb + ' region ' + region + '? This provisions/destroys real AWS resources.')) return;
+    const r = await fetch('/api/regions/' + region + '/' + mode, {method: 'POST'});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(j.error || 'Error'); return; }
+    setRegionOp(region, mode, 'running', verb + 'ing ' + region + '…');
+    startStream(verb + 'ing ' + region, {region, mode, reloadOnDone: true});
+}
+
+function startStream(title, opts = {}){
+    opPanel.style.display = 'block';
+    opTitle.textContent = title;
+    setOpStatus('running');
+    if (opts.clear !== false) opLog.textContent = '';
+    const es = new EventSource('/api/regions/op/stream');
+    es.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.line) {
+            opLog.textContent += d.line + '\n';
+            opLog.scrollTop = opLog.scrollHeight;
+            setRegionOp(opts.region || d.region, opts.mode || d.mode, 'running', d.line);
+        }
+        if (d.status) {
+            es.close();
+            setOpStatus(d.status);
+            setRegionOp(opts.region || d.region, opts.mode || d.mode, d.status, d.status === 'done' ? 'Completed' : 'Operation failed');
+            if (opts.reloadOnDone && d.status !== 'idle') { setTimeout(() => location.reload(), 1800); }
+        }
+    };
+    es.onerror = () => es.close();
+}
+
+// Re-attach if an op is already running when the page loads.
+(async () => {
+    try {
+        const j = await (await fetch('/api/regions')).json();
+        if (!j.op) return;
+        if (j.op.region && j.op.status !== 'idle') setRegionOp(j.op.region, j.op.mode, j.op.status, j.op.last_line);
+        if (j.op.status === 'running') {
+            startStream(j.op.title || 'Operation', {region: j.op.region, mode: j.op.mode, reloadOnDone: true, clear: false});
+        } else if ((j.op.status === 'done' || j.op.status === 'error') && j.op.title) {
+            opPanel.style.display = 'block';
+            opTitle.textContent = j.op.title;
+            setOpStatus(j.op.status);
+            if (Array.isArray(j.op.log) && !opLog.textContent.trim()) opLog.textContent = j.op.log.join('\n');
+        }
+    } catch (e) {}
+})();
+</script>
+{% endblock %}

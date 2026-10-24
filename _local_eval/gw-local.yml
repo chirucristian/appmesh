@@ -1,0 +1,18 @@
+# Local evaluation config - gateway reads routes from S3 (real route-sync flow).
+# The S3 object conf/lb/eval/application.yml defines two localhost "regions".
+server:
+  port: 8080
+route-sync:
+  enabled: true
+  bucket: upb-master-dissertation
+  key: conf/lb/eval/application.yml
+  region: us-east-1
+  poll-interval-ms: 10000
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+logging:
+  level:
+    com.demo.gateway: INFO

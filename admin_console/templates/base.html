@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AppMesh Console{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%233a6ea8'/><g fill='none' stroke='white' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'><path d='M16 6l9 4.5-9 4.5-9-4.5z'/><path d='M7 16l9 4.5 9-4.5M7 21l9 4.5 9-4.5'/></g></svg>">
+    {% block head %}{% endblock %}
+</head>
+<body>
+{% from "_components.html" import ic %}
+{% if session.user %}
+{% set p = request.path %}
+<div class="layout">
+    <aside class="sidenav">
+        <a class="brand" href="/">
+            <span class="mark">{{ ic('layers') }}</span>
+            <span>AppMesh</span>
+            <span class="dim">Console</span>
+        </a>
+        <div class="navgroup">
+            <div class="navlabel">Operate</div>
+            <a class="navitem{% if p == '/' or p == '/new' or p.startswith('/deployment') %} active{% endif %}" href="/">
+                {{ ic('box') }}Services{% if nav_deploy_count is defined and nav_deploy_count is not none %}<span class="count">{{ nav_deploy_count }}</span>{% endif %}
+            </a>
+            <a class="navitem{% if p == '/scan' %} active{% endif %}" href="/scan">
+                {{ ic('radar') }}Scan AWS
+            </a>
+        </div>
+        {% if session.role == 'root' %}
+        <div class="navgroup">
+            <div class="navlabel">Administer</div>
+            <a class="navitem{% if p == '/regions' %} active{% endif %}" href="/regions">
+                {{ ic('globe') }}Regions
+            </a>
+            <a class="navitem{% if p == '/accounts' %} active{% endif %}" href="/accounts">
+                {{ ic('users') }}Accounts
+            </a>
+        </div>
+        {% endif %}
+        <span class="spacer"></span>
+        <div class="railfoot">
+            <span class="avatar">{{ session.user[:2] | upper }}</span>
+            <span>
+                <div class="uname">{{ session.user }}</div>
+                <div class="urole">{{ session.role }}</div>
+            </span>
+            <a class="out" href="/logout" title="Log out">{{ ic('logout') }}</a>
+        </div>
+    </aside>
+    <main class="main">
+        <div class="page {% block page_class %}{% endblock %}">
+            {% block content %}{% endblock %}
+            <div class="footer">appmesh deploy console</div>
+        </div>
+    </main>
+</div>
+{% else %}
+{{ self.content() }}
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

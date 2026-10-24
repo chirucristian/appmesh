@@ -1,0 +1,107 @@
+<svg viewBox="0 0 900 700" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Arhitectură stratificată a platformei AppMesh</title>
+  <defs>
+    <marker id="aBlue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#3F5E84"/>
+    </marker>
+    <marker id="aSienna" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#8A6A4E"/>
+    </marker>
+  </defs>
+
+  <!-- fundal alb -->
+  <rect x="0" y="0" width="900" height="700" fill="#ffffff"/>
+
+  <!-- ============ CADRE DE STRAT ============ -->
+  <rect x="110" y="46"  width="700" height="104" rx="12" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+  <text x="124" y="68"  font-size="12" font-style="italic" fill="#6E7886">Strat edge (Cloudflare)</text>
+
+  <rect x="110" y="178" width="700" height="104" rx="12" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+  <text x="124" y="200" font-size="12" font-style="italic" fill="#6E7886">Strat de management al traficului (per regiune, AWS)</text>
+
+  <rect x="110" y="308" width="700" height="130" rx="12" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+  <text x="124" y="330" font-size="12" font-style="italic" fill="#6E7886">Strat aplicație (per regiune, AWS)</text>
+
+  <rect x="110" y="466" width="700" height="104" rx="12" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+  <text x="124" y="488" font-size="12" font-style="italic" fill="#6E7886">Strat de configurație și stare (AWS)</text>
+
+  <rect x="110" y="598" width="700" height="92"  rx="12" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+  <text x="124" y="620" font-size="12" font-style="italic" fill="#6E7886">Strat de administrare (plan de control)</text>
+
+  <!-- ============ CALEA CERERII (albastru, descendent) ============ -->
+  <line x1="460" y1="18"  x2="460" y2="46"  stroke="#3F5E84" stroke-width="1.6" marker-end="url(#aBlue)"/>
+  <text x="470" y="32" font-size="11" fill="#283341">cerere utilizator (HTTP)</text>
+  <line x1="460" y1="150" x2="460" y2="178" stroke="#3F5E84" stroke-width="1.6" marker-end="url(#aBlue)"/>
+  <line x1="460" y1="282" x2="460" y2="308" stroke="#3F5E84" stroke-width="1.6" marker-end="url(#aBlue)"/>
+
+  <!-- ============ STRAT EDGE ============ -->
+  <rect x="140" y="82" width="196" height="52" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="238" y="104" text-anchor="middle" font-size="12" fill="#283341">DNS Cloudflare</text>
+  <text x="238" y="121" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">zona appmesh.org</text>
+
+  <rect x="362" y="82" width="196" height="52" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="460" y="104" text-anchor="middle" font-size="12" fill="#283341">Load balancer</text>
+  <text x="460" y="121" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">steering proximity + failover</text>
+
+  <rect x="584" y="82" width="196" height="52" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="682" y="104" text-anchor="middle" font-size="12" fill="#283341">Pool-uri regionale</text>
+  <text x="682" y="121" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">monitor HTTP /status</text>
+
+  <!-- ============ STRAT TRAFIC ============ -->
+  <rect x="140" y="212" width="290" height="54" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="285" y="234" text-anchor="middle" font-size="12" fill="#283341">ALB regional (partajat)</text>
+  <text x="285" y="251" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">rutare după host-header</text>
+
+  <rect x="490" y="212" width="290" height="54" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="635" y="234" text-anchor="middle" font-size="12" fill="#283341">Gateway custom (Spring Cloud Gateway)</text>
+  <text x="635" y="251" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">retry între regiuni + circuit breaker</text>
+
+  <!-- ============ STRAT APLICAȚIE ============ -->
+  <rect x="140" y="342" width="640" height="90" rx="8" fill="none" stroke="#BBBBBB" stroke-width="1"/>
+  <text x="154" y="360" font-size="11" font-style="italic" fill="#8A6A4E">Auto Scaling Group · instanțe EC2 (Amazon Linux 2023)</text>
+
+  <rect x="164" y="368" width="184" height="52" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="256" y="398" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#283341">ambulance-service</text>
+
+  <rect x="368" y="368" width="184" height="52" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="460" y="398" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#283341">police-service</text>
+
+  <rect x="572" y="368" width="184" height="52" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1.2"/>
+  <text x="664" y="398" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#283341">landing  (/)</text>
+
+  <!-- ============ STRAT CONFIGURAȚIE ============ -->
+  <rect x="140" y="500" width="330" height="54" rx="8" fill="#E6DACB" stroke="#8A6A4E" stroke-width="1.2"/>
+  <text x="305" y="522" text-anchor="middle" font-size="12" fill="#283341">Amazon S3</text>
+  <text x="305" y="539" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">JAR-uri + conf/lb/&lt;reg&gt;/application.yml</text>
+
+  <rect x="490" y="500" width="290" height="54" rx="8" fill="#E6DACB" stroke="#8A6A4E" stroke-width="1.2"/>
+  <text x="635" y="522" text-anchor="middle" font-size="12" fill="#283341">DynamoDB</text>
+  <text x="635" y="539" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">utilizatori + deployments (stare)</text>
+
+  <!-- ============ STRAT ADMINISTRARE ============ -->
+  <rect x="260" y="626" width="400" height="48" rx="8" fill="#E6DACB" stroke="#8A6A4E" stroke-width="1.2"/>
+  <text x="460" y="646" text-anchor="middle" font-size="12" fill="#283341">Consola de administrare (Flask)</text>
+  <text x="460" y="662" text-anchor="middle" font-size="10" font-style="italic" fill="#6E7886">provizionare + deprovizionare + scalare + reconciliere</text>
+
+  <!-- ============ PLAN DE CONFIGURAȚIE: S3 -> consumatori (sienna, punctat) ============ -->
+  <!-- JAR -> instanțe -->
+  <path d="M250,500 V420" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <text x="242" y="456" text-anchor="end" font-size="10" font-style="italic" fill="#8A6A4E">JAR la pornire</text>
+  <!-- config rute -> gateway -->
+  <path d="M430,500 V452 H562 V268" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <text x="568" y="300" font-size="10" font-style="italic" fill="#8A6A4E">config rute (S3, poll 30s)</text>
+
+  <!-- ============ PLAN DE CONTROL: consola -> resurse (sienna, punctat) ============ -->
+  <!-- consola scrie starea / publica config -->
+  <path d="M340,626 V556" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <text x="246" y="592" font-size="10" font-style="italic" fill="#8A6A4E">publică config</text>
+  <path d="M560,626 V556" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <text x="566" y="592" font-size="10" font-style="italic" fill="#8A6A4E">scrie stare</text>
+
+  <!-- consola provizioneaza straturile edge/trafic/aplicatie (magistrala dreapta) -->
+  <path d="M460,626 V606 H836 V108" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7"/>
+  <path d="M836,108 H812" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <path d="M836,240 H812" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <path d="M836,388 H812" fill="none" stroke="#8A6A4E" stroke-width="1.4" stroke-dasharray="6,7" marker-end="url(#aSienna)"/>
+  <text x="852" y="380" text-anchor="middle" font-size="10.5" font-style="italic" fill="#8A6A4E" transform="rotate(-90 852 380)">provizionează &amp; configurează</text>
+</svg>

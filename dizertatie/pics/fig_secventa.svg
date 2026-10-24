@@ -1,0 +1,73 @@
+<svg viewBox="0 0 820 440" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
+  <!-- fundal alb -->
+  <rect x="0" y="0" width="820" height="440" fill="#ffffff"/>
+
+  <defs>
+    <!-- vârfuri pline -->
+    <marker id="solidBlue" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#3F5E84"/>
+    </marker>
+    <marker id="solidGray" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#444444"/>
+    </marker>
+    <!-- vârfuri deschise -->
+    <marker id="openRed" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M8,0 L0,4 L8,8" fill="none" stroke="#E24B4A" stroke-width="1.4"/>
+    </marker>
+    <marker id="openGreen" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M8,0 L0,4 L8,8" fill="none" stroke="#639922" stroke-width="1.4"/>
+    </marker>
+    <marker id="openBlue" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M8,0 L0,4 L8,8" fill="none" stroke="#3F5E84" stroke-width="1.4"/>
+    </marker>
+  </defs>
+
+  <!-- ===== Linii de viață (punctate gri) ===== -->
+  <line x1="90"  y1="56" x2="90"  y2="410" stroke="#999999" stroke-width="1" stroke-dasharray="3,4"/>
+  <line x1="313" y1="56" x2="313" y2="410" stroke="#999999" stroke-width="1" stroke-dasharray="3,4"/>
+  <line x1="536" y1="56" x2="536" y2="410" stroke="#999999" stroke-width="1" stroke-dasharray="3,4"/>
+  <line x1="759" y1="56" x2="759" y2="410" stroke="#999999" stroke-width="1" stroke-dasharray="3,4"/>
+
+  <!-- ===== Cutii-antet ===== -->
+  <!-- Utilizator (albastru) -->
+  <rect x="35"  y="20" width="110" height="36" rx="8" fill="#D5E0EC" stroke="#3F5E84"/>
+  <text x="90"  y="42" text-anchor="middle" font-size="12" fill="#000000">Utilizator</text>
+  <!-- Gateway (albastru) -->
+  <rect x="258" y="20" width="110" height="36" rx="8" fill="#D5E0EC" stroke="#3F5E84"/>
+  <text x="313" y="42" text-anchor="middle" font-size="12" fill="#000000">Gateway</text>
+  <!-- Regiune A (sienna) -->
+  <rect x="481" y="20" width="110" height="36" rx="8" fill="#E6DACB" stroke="#8A6A4E"/>
+  <text x="536" y="42" text-anchor="middle" font-size="12" fill="#000000">Regiune A</text>
+  <!-- Regiune B (sienna) -->
+  <rect x="704" y="20" width="110" height="36" rx="8" fill="#E6DACB" stroke="#8A6A4E"/>
+  <text x="759" y="42" text-anchor="middle" font-size="12" fill="#000000">Regiune B</text>
+
+  <!-- ===== Mesaje ===== -->
+  <!-- 1. Utilizator -> Gateway : cerere -->
+  <text x="201" y="90" text-anchor="middle" font-size="11" fill="#3F5E84">cerere</text>
+  <line x1="90" y1="95" x2="313" y2="95" stroke="#3F5E84" stroke-width="1.5" marker-end="url(#solidBlue)"/>
+
+  <!-- 2. Gateway -> Regiune A : încearcă regiunea A -->
+  <text x="424" y="140" text-anchor="middle" font-size="11" fill="#444444">încearcă regiunea A</text>
+  <line x1="313" y1="145" x2="536" y2="145" stroke="#444444" stroke-width="1.5" marker-end="url(#solidGray)"/>
+
+  <!-- 3. Regiune A ⇢ Gateway (înapoi) : 5xx / fără răspuns -->
+  <text x="424" y="190" text-anchor="middle" font-size="11" fill="#E24B4A">5xx / fără răspuns</text>
+  <line x1="536" y1="195" x2="313" y2="195" stroke="#E24B4A" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#openRed)"/>
+
+  <!-- 4. Gateway -> Regiune B : retry -->
+  <text x="536" y="240" text-anchor="middle" font-size="11" fill="#444444">retry: încearcă regiunea B</text>
+  <line x1="313" y1="245" x2="759" y2="245" stroke="#444444" stroke-width="1.5" marker-end="url(#solidGray)"/>
+
+  <!-- 5. Regiune B ⇢ Gateway (înapoi) : 200 OK -->
+  <text x="536" y="290" text-anchor="middle" font-size="11" fill="#639922">200 OK</text>
+  <line x1="759" y1="295" x2="313" y2="295" stroke="#639922" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#openGreen)"/>
+
+  <!-- 6. Gateway ⇢ Utilizator (înapoi) : răspuns -->
+  <text x="201" y="340" text-anchor="middle" font-size="11" fill="#3F5E84">răspuns</text>
+  <line x1="313" y1="345" x2="90" y2="345" stroke="#3F5E84" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#openBlue)"/>
+
+  <!-- ===== Notă: circuit breaker (lângă Regiune A, după mesajul 3) ===== -->
+  <rect x="556" y="205" width="150" height="26" rx="3" fill="#FBF3C9" stroke="#D8C97A"/>
+  <text x="631" y="222" text-anchor="middle" font-size="10" fill="#777777">circuit breaker → Open</text>
+</svg>

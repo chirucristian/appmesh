@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic %}
+{% block title %}Sign in — AppMesh Console{% endblock %}
+
+{% block content %}
+<div class="loginwrap">
+    <div class="logincard">
+        <div class="lbrand">
+            <span class="mark">{{ ic('layers') }}</span>
+            <span>AppMesh <span style="color:var(--text-3);font-weight:500">Console</span></span>
+        </div>
+        <p class="lsub">Sign in to manage your deployments</p>
+
+        {% if error %}
+        <div class="loginerror">{{ error }}</div>
+        {% endif %}
+
+        <form class="lpanel" method="post"
+              action="{{ url_for('login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}">
+            <div class="field">
+                <label>Username</label>
+                <input name="username" class="input mono" autocomplete="username" autofocus required placeholder="username">
+            </div>
+            <div class="field">
+                <label>Password</label>
+                <input name="password" type="password" class="input" autocomplete="current-password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary">{{ ic('lock') }}Sign in</button>
+        </form>
+        <p class="lfoot">appmesh console · us-east-1</p>
+    </div>
+</div>
+{% endblock %}

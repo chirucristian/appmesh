@@ -1,0 +1,39 @@
+# Mac
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Java / Maven
+target/
+*.class
+
+# Uploads / runtime files
+uploads/
+
+# Archives
+*.zip
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Sensitive configs
+# NOTE: only config.properties is secret. A blanket *.properties rule would also
+# swallow the Spring application.properties files, so keep this narrow.
+**/config.properties
+!**/config.properties.example
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
+credentials
+aws_credentials
+*secrets*
+*credentials*

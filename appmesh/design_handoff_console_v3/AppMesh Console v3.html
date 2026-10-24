@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppMesh Console — Cool Console (v3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="console-v3.css">
+<style>
+  html, body { margin: 0; padding: 0; min-height: 100%; background: #f3f5f7; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="icons.js"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="console-v3-shell.jsx"></script>
+<script type="text/babel" src="console-v2-screens-a.jsx"></script>
+<script type="text/babel" src="console-v2-screens-b.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const ACCENTS = {
+  '#3a6ea8': { d: '#2f5c8e', soft: '#e8eff7' },
+  '#2563c4': { d: '#1e52a5', soft: '#e7eefb' },
+  '#3f7d74': { d: '#346a62', soft: '#e7f1ef' },
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#3a6ea8",
+  "role": "user"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [route, setRoute] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('am-route-v3')) || { name: 'dashboard', depId: null }; }
+    catch (e) { return { name: 'dashboard', depId: null }; }
+  });
+  useEffect(() => { localStorage.setItem('am-route-v3', JSON.stringify(route)); }, [route]);
+
+  const go = (name, depId) => { setRoute({ name: name, depId: depId || null }); window.scrollTo(0, 0); };
+
+  const role = t.role;
+  const user = role === 'root' ? 'cchiru' : 'andrei';
+  const accent = ACCENTS[t.accent] ? t.accent : '#3a6ea8';
+  const acc = ACCENTS[accent];
+  const deployCount = role === 'root' ? AM_DEPLOYMENTS.length : AM_DEPLOYMENTS.filter((d) => d.owner === 'andrei').length;
+
+  let screen;
+  if (route.name === 'login') {
+    screen = <LoginScreen onLogin={() => go('dashboard')} />;
+  } else if (route.name === 'detail') {
+    screen = <DetailScreen go={go} depId={route.depId} />;
+  } else if (route.name === 'regions' && role === 'root') {
+    screen = <RegionsScreen />;
+  } else if (route.name === 'accounts' && role === 'root') {
+    screen = <AccountsScreen />;
+  } else if (route.name === 'new') {
+    screen = <NewDeploymentScreen go={go} />;
+  } else if (route.name === 'scan') {
+    screen = <ScanScreen />;
+  } else {
+    screen = <DashboardScreen go={go} role={role} />;
+  }
+
+  return (
+    <div className="am" style={{ '--accent': accent, '--accent-d': acc.d, '--accent-soft': acc.soft, minHeight: '100vh' }}>
+      {route.name === 'login' ? (
+        screen
+      ) : (
+        <div className="layout">
+          <SideNav route={route.name} go={go} role={role} user={user} deployCount={deployCount} />
+          <div className="main">
+            {screen}
+            <div className="footer">appmesh deploy console</div>
+          </div>
+        </div>
+      )}
+      <TweaksPanel>
+        <TweakSection label="Theme"></TweakSection>
+        <TweakColor label="Accent" value={accent} options={['#3a6ea8', '#2563c4', '#3f7d74']}
+          onChange={(v) => setTweak('accent', v)}></TweakColor>
+        <TweakSection label="Session"></TweakSection>
+        <TweakRadio label="Viewing as" value={role} options={['root', 'user']}
+          onChange={(v) => { setTweak('role', v); if (['regions', 'accounts'].indexOf(route.name) !== -1 && v !== 'root') go('dashboard'); }}></TweakRadio>
+      </TweaksPanel>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

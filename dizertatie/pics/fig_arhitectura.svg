@@ -1,0 +1,48 @@
+<svg width="910" height="340" viewBox="0 0 910 340" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Arhitectură: plan de date (albastru) și plan de control (sienna)</title>
+<defs>
+<marker id="ahData" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3F5E84"/></marker>
+<marker id="ahCtrl" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8A6A4E"/></marker>
+</defs>
+
+<rect x="0" y="0" width="910" height="340" fill="#FFFFFF"/>
+
+<g font-family="Segoe UI, system-ui, sans-serif">
+
+<rect x="60" y="44" width="780" height="92" rx="12" fill="none" stroke="#3F5E84" stroke-width="1.2"/>
+<text x="78" y="65" font-size="12" font-style="italic" fill="#6E7886">plan de date (calea cererii)</text>
+
+<rect x="290" y="222" width="320" height="92" rx="12" fill="none" stroke="#8A6A4E" stroke-width="1.2"/>
+<text x="308" y="243" font-size="12" font-style="italic" fill="#6E7886">plan de control</text>
+
+<line x1="199" y1="101" x2="235" y2="101" stroke="#3F5E84" stroke-width="1.5" marker-end="url(#ahData)"/>
+<line x1="337" y1="101" x2="373" y2="101" stroke="#3F5E84" stroke-width="1.5" marker-end="url(#ahData)"/>
+<line x1="505" y1="101" x2="541" y2="101" stroke="#3F5E84" stroke-width="1.5" marker-end="url(#ahData)"/>
+<line x1="613" y1="101" x2="649" y2="101" stroke="#3F5E84" stroke-width="1.5" marker-end="url(#ahData)"/>
+
+<line x1="405" y1="279" x2="453" y2="279" stroke="#8A6A4E" stroke-width="1.5" marker-end="url(#ahCtrl)"/>
+
+<line x1="360" y1="256" x2="406" y2="138" stroke="#8A6A4E" stroke-width="2" stroke-dasharray="6,9" marker-end="url(#ahCtrl)"/>
+<line x1="520" y1="256" x2="470" y2="126" stroke="#8A6A4E" stroke-width="2" stroke-dasharray="6,9" marker-end="url(#ahCtrl)"/>
+
+<rect x="99" y="78" width="100" height="46" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1"/>
+<text x="149" y="101" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">Utilizator</text>
+<rect x="237" y="78" width="100" height="46" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1"/>
+<text x="287" y="101" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">Cloudflare</text>
+<rect x="375" y="78" width="130" height="46" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1"/>
+<text x="440" y="101" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">Gateway Custom</text>
+<rect x="543" y="78" width="70" height="46" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1"/>
+<text x="578" y="101" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">ALB</text>
+<rect x="651" y="78" width="150" height="46" rx="8" fill="#D5E0EC" stroke="#3F5E84" stroke-width="1"/>
+<text x="726" y="101" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">Instanțe aplicație</text>
+
+<rect x="315" y="256" width="90" height="46" rx="8" fill="#E6DACB" stroke="#8A6A4E" stroke-width="1"/>
+<text x="360" y="279" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">Consola</text>
+<rect x="455" y="256" width="130" height="46" rx="8" fill="#E6DACB" stroke="#8A6A4E" stroke-width="1"/>
+<text x="520" y="279" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#283341">S3 + DynamoDB</text>
+
+<text x="429" y="271" text-anchor="middle" font-size="12" fill="#8A6A4E">scrie</text>
+<text x="316" y="182" text-anchor="middle" font-size="12" font-style="italic" fill="#6E7886">provizionează</text>
+<text x="548" y="182" text-anchor="middle" font-size="12" font-style="italic" fill="#6E7886">config</text>
+</g>
+</svg>

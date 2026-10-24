@@ -1,0 +1,75 @@
+# ============================================================================
+#  GATEWAY LOAD BALANCER – SINGLE CONFIGURATION FILE
+#  All service routing, region definitions, health-check paths, circuit-breaker
+#  and timeout settings live here.
+# ============================================================================
+
+server:
+  port: 8080
+
+# ── Dynamic route config sourced from S3 ────────────────────────────────────
+#  When enabled, each regional gateway pulls its own application.yml object from
+#  S3 at startup and re-checks it every poll-interval-ms, rebuilding routes on change.
+#  The `gateway:` block below is only the offline fallback (used until/if S3 loads).
+#  Credentials come from the AWS default chain (EC2 instance role on AWS;
+#  AWS_* env vars or ~/.aws/credentials locally) — no keys here.
+route-sync:
+  enabled: true
+  bucket: upb-master-dissertation
+  key: conf/lb/{region}/application.yml
+  region: us-east-1            # bucket lives in us-east-1 regardless of gateway region
+  poll-interval-ms: 30000
+
+# ── Gateway service definitions (offline fallback; S3 overrides this) ────────
+gateway:
+
+  # Map of service-name → configuration.
+  # The service name doubles as the URL prefix:
+  #   /police-service/**  →  <region-url>/
+  services:
+    ambulance-service:
+      paths:
+        - /ambulance-service/**
+      health-check-path: /status
+      regions:
+        - name: eu-central-1
+          url: http://ambulance-service-eu-central-1.appmesh.org
+        - name: eu-west-1
+          url: http://ambulance-service-eu-west-1.appmesh.org
+
+    police-service:
+      paths:
+        - /police-service/**
+      health-check-path: /status
+      regions:
+        - name: eu-central-1
+          url: http://police-service-eu-central-1.appmesh.org
+        - name: eu-west-1
+          url: http://police-service-eu-west-1.appmesh.org
+
+  # ── Circuit breaker settings ──────────────────────────────────────────────
+  circuit-breaker:
+    failure-threshold: 3          # consecutive failures before OPEN
+    success-threshold: 2          # consecutive successes in HALF_OPEN → CLOSED
+    half-open-delay-seconds: 30   # wait before probing an OPEN circuit
+
+  # ── Health-check settings ─────────────────────────────────────────────────
+  health-check:
+    interval-seconds: 15          # seconds between health pings
+    timeout-seconds: 5            # per-request timeout for a health ping
+
+  # ── Proxy timeout settings ────────────────────────────────────────────────
+  timeout:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 5000
+
+# ── Spring / Actuator ──────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+logging:
+  level:
+    com.demo.gateway: INFO

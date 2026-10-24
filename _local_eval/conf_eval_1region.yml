@@ -1,0 +1,9 @@
+gateway:
+  services:
+    ambulance-service:
+      paths:
+        - /ambulance-service/**
+      health-check-path: /status
+      regions:
+        - name: local-a
+          url: http://localhost:8082

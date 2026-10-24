@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% from "_components.html" import ic %}
+{% block title %}Add service — AppMesh Console{% endblock %}
+{% block page_class %}page-narrow{% endblock %}
+
+{% block content %}
+<a href="/" class="backlink">{{ ic('arrowL') }}Services</a>
+<div class="phead">
+    <div>
+        <h1>Add service</h1>
+        <p class="sub">Name your service, set its health check, and deploy its .jar behind the region's shared load balancer.</p>
+    </div>
+</div>
+
+<div class="cols" style="grid-template-columns:1.5fr 1fr">
+    <div class="panel" style="margin-bottom:0">
+        <div class="panel-body" style="padding:22px">
+            <form id="deploy-form">
+                <div class="field">
+                    <label for="dep-name">Service name</label>
+                    <input type="text" id="dep-name" class="input mono" placeholder="police-service" required>
+                    <span class="hint">Public URL will be <code>appmesh.org/&lt;name&gt;/</code> · lowercase letters, digits, hyphens · must be unique</span>
+                </div>
+
+                <div class="field">
+                    <label>Regions</label>
+                    <div class="seg seg-multi" id="region-seg">
+                        {% for r in regions %}
+                        <button type="button" class="{{ 'on' if loop.first else '' }}" data-region="{{ r }}">{{ r }}</button>
+                        {% endfor %}
+                    </div>
+                    {% if regions %}
+                    <span class="hint">Click to toggle — pick one or more onboarded regions (at least one). The service is deployed to every selected region with cross-region failover.</span>
+                    {% else %}
+                    <span class="hint" style="color:var(--red)">No regions onboarded — add one under Regions first.</span>
+                    {% endif %}
+                </div>
+
+                <div class="field">
+                    <label>Initial instances</label>
+                    <div class="stepper" style="width:fit-content">
+                        <button type="button" id="inst-dec">{{ ic('minus') }}</button>
+                        <input class="n" id="instance-count" type="number" min="0" step="1" value="1" required>
+                        <button type="button" id="inst-inc">{{ ic('plus') }}</button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="health-check-path">Health-check path</label>
+                    <input type="text" id="health-check-path" class="input mono" value="/status" placeholder="/status">
+                    <span class="hint">Path the shared ALB &amp; gateway probe for a 200. Every AppMesh service answers on <code>/status</code>.</span>
+                </div>
+
+                <div class="field">
+                    <label>Application JAR</label>
+                    <div class="bigdrop" id="file-drop">
+                        <input type="file" id="jar-input" accept=".jar">
+                        <div id="file-drop-content" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                            {{ ic('upload') }}
+                            <span class="t1">Drop your .jar here or <b id="browse-link">browse</b></span>
+                            <span class="t2">Spring Boot fat JAR · serves HTTP on :8080</span>
+                        </div>
+                        <div id="file-selected" style="display:none;align-items:center;gap:10px">
+                            {{ ic('box') }}
+                            <span class="t1" id="file-name-display"></span>
+                            <span class="t2" id="file-size-display"></span>
+                            <button type="button" class="btn btn-sm" id="clear-file">{{ ic('x') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="deploy-btn" style="width:100%;justify-content:center;height:38px" disabled>
+                    {{ ic('upload') }}<span id="deploy-btn-text">Create service</span>
+                    <span id="deploy-btn-spinner" class="btn-spinner" style="display:none"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:0">
+        <div class="panel-head"><span class="panel-title">{{ ic('layers') }}What gets created</span></div>
+        <div class="panel-body" style="padding-top:8px;padding-bottom:10px">
+            <div class="steplist">
+                <div class="step"><span class="sc idle">{{ ic('shield') }}</span><span class="st">Security group + IAM role</span></div>
+                <div class="step"><span class="sc idle">{{ ic('box') }}</span><span class="st">JAR uploaded to S3</span></div>
+                <div class="step"><span class="sc idle">{{ ic('doc') }}</span><span class="st">EC2 launch template</span></div>
+                <div class="step"><span class="sc idle">{{ ic('target') }}</span><span class="st">Target group on :8080</span></div>
+                <div class="step"><span class="sc idle">{{ ic('rule') }}</span><span class="st">Host rule on the shared regional ALB</span></div>
+                <div class="step"><span class="sc idle">{{ ic('activity') }}</span><span class="st">Auto Scaling Group across 2 AZs</span></div>
+                <div class="step"><span class="sc idle">{{ ic('globe') }}</span><span class="st">Cloudflare CNAME + health check</span></div>
+            </div>
+            <p style="font-size:11.5px;color:var(--text-3);margin-top:10px;border-top:1px solid var(--line);padding-top:12px">
+                No new load balancer — your service attaches to the region's shared ALB with a host-based rule. Live progress streams here during deploy.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const hasRegions = {{ 'true' if regions else 'false' }};
+const jarInput   = document.getElementById('jar-input');
+const fileDrop   = document.getElementById('file-drop');
+const browseLink = document.getElementById('browse-link');
+const fileSelected = document.getElementById('file-selected');
+const fileDropContent = document.getElementById('file-drop-content');
+const fileNameDisplay = document.getElementById('file-name-display');
+const fileSizeDisplay = document.getElementById('file-size-display');
+const clearFileBtn = document.getElementById('clear-file');
+const depName    = document.getElementById('dep-name');
+const deployBtn  = document.getElementById('deploy-btn');
+const form       = document.getElementById('deploy-form');
+
+// Region chips → multi-select. Click toggles a region on/off; at least one must
+// stay selected for the Create button to enable.
+function selectedRegions() {
+    return Array.from(document.querySelectorAll('#region-seg button.on'))
+                .map(b => b.dataset.region);
+}
+document.querySelectorAll('#region-seg button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        btn.classList.toggle('on');
+        refreshCreateBtn();
+    });
+});
+
+// Instance stepper.
+const instInput = document.getElementById('instance-count');
+document.getElementById('inst-dec').addEventListener('click', () => {
+    instInput.value = Math.max(0, (parseInt(instInput.value, 10) || 0) - 1);
+});
+document.getElementById('inst-inc').addEventListener('click', () => {
+    instInput.value = (parseInt(instInput.value, 10) || 0) + 1;
+});
+
+browseLink.addEventListener('click', e => { e.stopPropagation(); jarInput.click(); });
+fileDrop.addEventListener('click', e => {
+    if (e.target === clearFileBtn || e.target.closest('#clear-file')) return;
+    if (fileSelected.style.display !== 'none') return;
+    jarInput.click();
+});
+fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+fileDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    fileDrop.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+        jarInput.files = e.dataTransfer.files;
+        handleFile(e.dataTransfer.files[0]);
+    }
+});
+jarInput.addEventListener('change', () => {
+    if (jarInput.files.length) handleFile(jarInput.files[0]);
+});
+clearFileBtn.addEventListener('click', () => {
+    jarInput.value = '';
+    fileDropContent.style.display = 'flex';
+    fileSelected.style.display = 'none';
+    refreshCreateBtn();
+});
+
+function handleFile(file) {
+    if (!file.name.endsWith('.jar')) {
+        alert('Please select a .jar file');
+        return;
+    }
+    fileDropContent.style.display = 'none';
+    fileSelected.style.display = 'flex';
+    fileNameDisplay.textContent = file.name;
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    fileSizeDisplay.textContent = `${mb} MB`;
+    refreshCreateBtn();
+}
+
+// Enable "Create service" only once a name, a JAR, and an onboarded region exist.
+// The name is set by the user — never derived from the JAR filename.
+function refreshCreateBtn() {
+    deployBtn.disabled = !(hasRegions && depName.value.trim()
+                           && jarInput.files.length && selectedRegions().length);
+}
+depName.addEventListener('input', refreshCreateBtn);
+
+form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const regions = selectedRegions();
+    if (!jarInput.files.length || !depName.value.trim() || !regions.length) return;
+
+    deployBtn.disabled = true;
+    document.getElementById('deploy-btn-text').textContent = 'Creating…';
+    document.getElementById('deploy-btn-spinner').style.display = '';
+
+    const fd = new FormData();
+    fd.append('jar', jarInput.files[0]);
+    fd.append('name', depName.value.trim());
+    fd.append('regions', regions.join(','));
+    fd.append('instances', document.getElementById('instance-count').value);
+    fd.append('health_check_path', document.getElementById('health-check-path').value.trim() || '/status');
+
+    try {
+        const resp = await fetch('/api/deploy', { method: 'POST', body: fd });
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.error || 'Upload failed');
+        }
+        const { id } = await resp.json();
+        window.location.href = `/deployment/${id}`;
+    } catch (err) {
+        alert('Error: ' + err.message);
+        deployBtn.disabled = false;
+        document.getElementById('deploy-btn-text').textContent = 'Create service';
+        document.getElementById('deploy-btn-spinner').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

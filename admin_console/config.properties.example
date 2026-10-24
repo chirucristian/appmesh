@@ -1,0 +1,86 @@
+; ============================================================================
+;  AppMesh console configuration — TEMPLATE
+;
+;  Copy this file to config.properties (same directory) and fill in the values.
+;  config.properties is git-ignored: every credential the platform needs lives
+;  there and nowhere else. Nothing in this repository should ever contain a
+;  real key, token or password.
+;
+;      cp admin_console/config.properties.example admin_console/config.properties
+;
+;  The same file is read by the console (admin_console/app.py) and by the local
+;  evaluation scripts (_local_eval/*.py).
+; ============================================================================
+
+[default]
+
+; ── AWS credentials (EC2, ELBv2, AutoScaling, IAM, S3, DynamoDB) ────────────
+;  Leave both blank to fall back to the default credential chain
+;  (EC2 instance role, AWS_* environment variables, or ~/.aws/credentials).
+;  The IAM principal needs: ec2:*, elasticloadbalancing:*, autoscaling:*,
+;  iam:PassRole + instance-profile management, s3:* on the bucket below, and
+;  dynamodb:* on the two tables below.
+aws_access_key_id =
+aws_secret_access_key =
+aws_region = us-east-1
+
+; ── S3 (service JAR storage + gateway route configs) ────────────────────────
+;  One bucket holds uploaded JARs under <s3_prefix> and the per-region gateway
+;  route configs under conf/lb/<region>/application.yml.
+;  Keep Block Public Access ON — the platform only ever reads it with signed
+;  requests, so the bucket never needs to be public.
+;  NOTE: accessed in us-east-1 regardless of aws_region.
+s3_bucket = your-bucket-name
+s3_prefix = jars/
+
+; ── Cloudflare DNS + load balancer ──────────────────────────────────────────
+;  Set skip_cloudflare = true to run without any DNS automation (deployments
+;  are then reachable only by their raw ALB DNS name).
+;  The API token needs Zone:DNS:Edit and Account:Load Balancers:Edit.
+skip_cloudflare = false
+cloudflare_api_token =
+cloudflare_zone_id =
+cloudflare_account_id =
+cloudflare_domain = example.org
+;  Cloudflare's free plan caps origin pools, which caps how many regions can be
+;  onboarded at once. Raise this only if your plan allows more pools.
+max_onboarded_regions = 2
+cloudflare_lb_name = example.org
+cloudflare_lb_monitor_name = appmesh-gateway-status
+cloudflare_lb_steering_policy = proximity
+cloudflare_lb_pool_prefix = appmesh
+cloudflare_lb_check_regions = ENAM
+
+; ── EC2 instance sizing ─────────────────────────────────────────────────────
+;  Default size for user services + the landing page. Gateways and the console
+;  override this to t3.small in code (they carry more load).
+instance_type = t3.micro
+
+; ── Flask session (login cookie) ────────────────────────────────────────────
+;  Any long random string. Stable so sessions survive a restart and are shared
+;  across console instances. Generate one with:
+;      python -c "import secrets; print(secrets.token_urlsafe(48))"
+flask_secret_key =
+session_hours = 6
+
+; ── Console root account (seeded into DynamoDB on first start) ──────────────
+;  Created once, on the first run, if the users table has no such user.
+;  Changing root_password here does NOT update an account that already exists —
+;  rotate it from the Accounts page in the console instead.
+root_username = admin
+root_password =
+
+; ── DynamoDB (user accounts + deployment metadata) ──────────────────────────
+;  Tables are created automatically on first start, in this region.
+ddb_region = us-east-1
+ddb_users_table = appmesh-users
+ddb_deployments_table = appmesh-deployments
+
+; ── Shared regional ALB ─────────────────────────────────────────────────────
+;  One ALB per region named "<prefix><region>" (e.g. appmesh-alb-us-east-1),
+;  shared across services via host-header listener rules.
+alb_name_prefix = appmesh-alb-
+
+; ── Local evaluation scripts only (_local_eval/) ────────────────────────────
+;  JVM used to launch the demo JARs. Leave blank/omit to use "java" from PATH.
+java_executable = java
